@@ -112,6 +112,8 @@ Answer to challenge 1.
 
 As the grain size increases through cells aggregation, the mean tends to stay relatively stable (all rasters recorded a mean value of 3.0078), while the variance decreases. The observed pattern of relatively stable mean and decreasing variance as the grain size increases is a result of the statistical properties of the aggregation process. Aggregating cells using the mean tends to smooth out extreme values, leading to a reduction in variability. The larger grain size results in a more averaged representation of the underlying distribution. Larger sample sizes (achieved by aggregating more cells) lead to greater statistical stability. Variability tends to decrease as the sample size increases, contributing to the reduction in variance.
 
+$\color{red}{\text{Nice! +4}}$
+
 
 ## Challenge 2 (4 points)
 
@@ -207,6 +209,7 @@ Variance Values:
 In the first challenge (mean aggregation), the variance values consistently decreased as the grain size increased.
 Similarly, in this question (mode aggregation), the variance values still decreased, but the pattern and values differed.
 
+$\color{red}{\text{Nice. +4}}$
 
 
 ## Challenge 3 (2 points)
@@ -222,6 +225,8 @@ Cropping the raster may result in a loss of the broader landscape context. If th
 
 Scale Mismatch:
 The scale at which ecological processes operate may not align with the resolution of the raster. Some ecological processes may occur at various and larger scales, making it necessary to consider different resolutions or aggregation levels to capture relevant patterns. Focusing on a smaller area might overlook larger-scale effects. If the scale at which five-lined skinks respond to forest cover extends beyond the cropped area, you may miss important landscape features influencing the species. 
+
+$\color{red}{\text{Perfect! +2}}$
 
 
 ## Challenge 4 (4 points)
@@ -382,6 +387,8 @@ Answer to Challenge 4.
 
 First of all, positive correlations (closer to +1) were recorded between the various scales. The strongest correlation value was observed between the 5km and 4km scales, and the weakest correlation was between 5km and 100m scale. The correlations change as you move from smaller scales (e.g., 100 m) to larger scales (e.g., 5 km). You notice that the correlations strengthen as the scale increases.
 
+$\color{red}{\text{And they strengthen as you reduce the difference between the scales (5 and 4 are more similar than 5 and 1). +4}}$
+
 ## Challenge 5 (4 points)
 
 **Fit 8 logistic regression models (a null model and one for each of the 7 forest scales). Compare these models using AICc. Which scale do you think represents the critical or characteristic scale at which forest cover affects skink presence? Is this scale clearly better than the others, or is there some ambiguity? What are some mechanisms by which forest cover could affect skink presence at this scale? What is your overall conclusion regarding how forest cover affects skink presence (i.e., take a look at the betas)?**
@@ -431,6 +438,8 @@ Overall conclusion:
 All the beta coefficients are positive, indicating a positive relationship between forest cover and skink presence at each scale. The strength of the relationship, however, as indicated by the magnitude of beta coefficients, increases as the scale increases. Larger scales suggest a stronger influence of forest cover on skink presence.
 The increase in beta coefficients from smaller to larger scales (e.g., 100m to 5km) suggests that the effect of forest cover becomes more pronounced and influential at larger spatial scales.
 
+$\color{red}{\text{Awesome! +4}}$
+
 ## Challenge 6 (2 points)
 
 **If you encounter ambiguity in identifying the characteristic scale of an effect, can you come up with a clever way to condense the information in the multi-scale variables into just one or two? When might it be ok to include two covariates in the same model (think multiple regression) that represent the same ecological feature measured at different scales (e.g., forest cover at 1 km AND forest cover at 5 km in the same model)? I can think of both a biological and a statistical answer to this question.**
@@ -444,3 +453,5 @@ Including two covariates in the same model
 Spatial Heterogeneity: Including covariates at different scales in the same model might be appropriate when the ecological process being studied operates at multiple scales. For example, a species might respond to both local habitat characteristics (small scale) and broader landscape features (large scale).
 
 Resource Utilization:Different scales could represent different aspects of a habitat that are ecologically meaningful. For instance, a species might rely on local vegetation (1 km scale) for nesting sites and on larger forest patches (5 km scale) for foraging or dispersal.
+
+$\color{red}{\text{Great! Just make sure that the variables aren't too highly correlated if you want to put them in the same mode. +2}}$
