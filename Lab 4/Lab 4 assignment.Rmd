@@ -145,6 +145,9 @@ PerformanceAnalytics::chart.Correlation(Patch_metrics, histogram=TRUE, pch=19)
 Answer to Challenge 1.
 There are very high correlations between the area and core (1.00), area and perimeter (0.95), core and perimeter (0.92) and shape and dimension (0.95) metrics indicating redundancy. On the other hand, low correlation values are observed between Contiguity Index and Perimeter Area Ratio (-0.99) suggesting uniqueness.
 
+$\color{red}{\text{The latter part of what you said is not exactly true. Two metrics are uncorrelated when they have a Pearson's correlation coefficient of 0. A value of -0.99 actually indicates nearly complete negative correlation. +3.5}}$
+
+
 
 ## Challenge 2 (4 points)
 
@@ -200,6 +203,8 @@ Answer to Challenge 2.
 The rook rule recorded the highest number of patches (67), whereas the queen rule recorded 49. The queen rule might often result in less and larger patches compared to the rook rule because it considers diagonals. The queen rule recorded the higher values in mean patch size, standard deviation in patch size and nearest-neighbor distance. Queen rule tends to result in larger mean patch sizes and potentially more variability. Nearest-Neighbor Distance may differ between the queen and rook rules, reflecting the spatial arrangement of patches. Both rules however recorded total edge values of 0.
 
 When to use one rule over the other depends on the spatial characteristics of your data and the specific ecological or landscape context. The queen rule is often more appropriate when considering landscape connectivity and habitat fragmentation, while the rook rule may be suitable for a simpler representation of spatial relationships. 
+
+$\color{red}{\text{Nice. Ultimately it boils down to "what's your question?". +4}}$
 
 
 ## Challenge 3 (4 points)
@@ -322,6 +327,8 @@ Shannon Diversity (shdi); Shannon Diversity increased from 2001 (~0.95) to 2019 
 
 Shannon Evenness (shei); Shannon Evenness increased from 2001 (~0.52) to 2019 (~0.74). Shannon evenness measures the equitability or uniformity in the distribution of land cover classes, with higher evenness values indicating a more even distribution of land cover types.
 An increment from 2001 to 2019 suggests a more balanced distribution of land cover classes in the landscape, indicating a more evenly distributed or balanced landscape.
+
+$\color{red}{\text{Perfect. +4}}$
 
 
 ## Challenge 4 (4 points)
@@ -567,6 +574,9 @@ Edge Density: there was an initial increase with lower threshold values as fores
 
 Mean Core Area: there is an increase in mean core area values as forest patches consolidate. 
 
+$\color{red}{\text{Awesome. +4}}$
+
+
 ## Challenge 5 (4 points)
 
 **Use the voss2d() function to simulate 9 surfaces. In each one, g should be 7, but vary the value of H from 0.1 to 0.9. Create a unique landscape from each of these with a threshold value of 30% cover. Again, the 1 values can represent anything you desire, and again I suggest you set the seed for your simulation value so that you get the same outcome each time you run the code. Plot these landscapes and comment on what patterns you see changing as the H value increases from 0.1 to 0.9.**
@@ -811,3 +821,5 @@ Landscape Shape Index (LSI); LSI is an 'Aggregation metric', which quantifies th
 Mean of Patch Area (AREA_MN); AREA_MN is an 'Area and Edge metric' which summarises each class as the mean of all patch areas belonging to the class. This metric represents the average size of patches within the forest class, providing insights into the distribution of patch sizes. As H-value increases, AREA_MN increases, indicating larger and more connected forest patches. Higher H values may lead to the consolidation of forested areas into larger, more cohesive patches.
 
 Aggregation Index (AI); AI is an 'Aggregation metric' which equals the number of like adjacencies divided by the theoretical maximum possible number of like adjacencies for that class summed over each class for the entire landscape.AI measures the degree of spatial aggregation of different land cover types, providing insights into the spatial arrangement of patches. As H increases, AI increases, suggesting more spatially aggregated and connected forest patches. Just like in AREA_MN,higher H values may lead to landscapes with larger, more cohesive forested areas.
+
+$\color{red}{\text{Excellent work, Sinka! +4}}$
