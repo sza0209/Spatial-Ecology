@@ -1,0 +1,163 @@
+---
+title: "Lab 5 assignment - Point pattern analysis"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r}
+require(spatstat)
+require(tidyverse)
+require(terra)
+```
+
+
+# Challenge 1 (3 points)
+
+Create a simulation window on a landscape stretching from 0 to 100 units in both the x and y directions. Now simulate the distribution of an organism on this landscape using a Poisson process with a lambda value of 0.01. Plot this organism's distribution. How many organisms are there on your landscape? What is the expected number of organisms that you should find on this landscape based on your simulation parameters? Why?
+
+```{r}
+set.seed(123)
+
+# Creating a simulation window
+
+Window = owin(xrange = c(0, 100), yrange = c(0, 100))
+
+# Simulating the distribution of an organism
+
+Organism = rpoispp(lambda = 0.01, nsim=1, win=Window)
+plot(Organism)
+
+# Calculating some summary statistics
+
+summary(Organism)
+
+# Output of expected number of organisms using lamba value (0.01), x_max (100) and y_max(100)
+
+cat("Expected number of organisms based on the simulation parameters (lambda):", 0.01 * 100 * 100, "\n")
+```
+
+Answer to Challenge 1.
+
+There are 94 organisms on the landscape. 
+The expected number of organisms based on the simulation parameters is 100. 
+The expected number of organisms based on the Poisson distribution is calculated using the formula lambda * x_max * y_max, where lambda is the average rate of occurrence per unit area, and x_max * y_max is the total area of the landscape. Thus, the expected number of organisms in a given area is calculated as the product of lambda and the area of interest.
+
+# Challenge 2 (3 points)
+
+Verify that there no linear or quadratic pattern in the distribution of your organisms using fitted Poisson process models. Show the outcome of this analysis and explain your conclusion.
+
+```{r}
+Initial = ppm(Organism, ~1)
+
+Linear = ppm(Organism, ~ x + y)
+#plot(Linear)
+
+Quadratic = ppm(Organism, ~polynom (x, y, 2))
+#plot(Quadratic)
+
+data.frame(model = c('Initial', 'Linear', 'Quadratic'),
+           AIC = c(AIC(Initial), AIC(Linear), AIC(Quadratic)))
+```
+Answer to Challenge 2. 
+
+Using AIC values, the model with the lowest AIC is considered the best-fitting model among the alternatives. In this case, the Initial model has the lowest AIC (1067.405), suggesting that the model with no spatial terms has more support and is the best-fitting model among the three. The Linear and Quadratic models have higher AIC values compared to the Initial model.This suggests that adding linear or quadratic spatial terms to the model does not improve the fit significantly. Based on the AIC values, you may conclude that there is no strong evidence to support the inclusion of linear or quadratic terms in the model. 
+
+# Challenge 3 (14 points)
+
+I have simulated the distributions of 2 critters and provided their x-y coordinates. One of them is a non-territorial predator. The second is a critter that is preyed upon by the predator and exhibits a fear response to the predator's presence. Use the tools you learned in the lab to explore the distributions of these two critters. Identify which one is the predator and which is the prey, and provide code and a thorough justification supporting your conclusion.
+
+
+```{r}
+#Use this code chunk to get you started.
+
+predPreyWin = owin(xrange = c(0, 100), yrange = c(0, 100))
+
+critter1 = read.csv('https://raw.githubusercontent.com/ValenteJJ/SpatialEcology/main/Week5/species1.csv') %>% 
+  mutate(org = 'critter1')
+
+critter2 = read.csv('https://raw.githubusercontent.com/ValenteJJ/SpatialEcology/main/Week5/species2.csv') %>% 
+  mutate(org = 'critter2')
+```
+
+
+To identify which critter is the predator and which is the prey, we can examine the spatial patterns and the results of the cross-type interaction analysis. Below is an analysis of the provided code to help make this determination:
+
+```{r}
+
+# Creating ppp files for the Critters data
+pppCritter1 = ppp(x=critter1$x, y=critter1$y, window = predPreyWin)
+plot(pppCritter1)
+
+pppCritter2 = ppp(x=critter2$x, y=critter2$y, window = predPreyWin)
+plot(pppCritter2)
+
+# Plotting
+plot(predPreyWin, main = "Critter Distribution", col = "grey", xlim = range(c(critter1$x, critter2$x)), ylim = range(c(critter1$y, critter2$y)))
+points(pppCritter1, pch = 20, col = "blue")
+points(pppCritter2, pch = 20, col = "red")
+```
+Visual inspection of the point patterns suggests that Critter 1 is more clustered, while Critter 2 exhibits a more scattered pattern. This only provides us with little information on which critter could be the predator or prey. 
+We can compute point counts within quadrats superimposed on the plot and assess whether these counts adhere to Complete Spatial Randomness (CSR) by employing a chi-square test.
+
+```{r}
+#calculating counts of points based on quadrats overlaid on the plot to determine whether these counts conform to CSR using a chi-square test.
+
+C1 = quadratcount(pppCritter1, nx=4, ny=4)
+plot(pppCritter1)
+plot(C1, add=T)
+
+quadrat.test(pppCritter1, nx=4, ny=4, method='Chisq')
+
+C2 = quadratcount(pppCritter2, nx=4, ny=4)
+plot(pppCritter2)
+plot(C2, add=T)
+
+quadrat.test(pppCritter2, nx=4, ny=4, method='Chisq')
+```
+Critter 1 recorded a p-value of 0.03325. Since the p-value is low than 0.05, we can suggest that there is significant evidence to reject the null hypothesis of CSR. In other words, the observed spatial pattern in Critter 1 is unlikely to have occurred by random chance alone.
+On the other hand, Critter 2 recorded a p-value of 0.1952. A higher p-value indicates that there is insufficient evidence to reject the null hypothesis. The observed spatial pattern may be consistent with Complete Spatial Randomness, and any deviations could be due to random chance.
+
+With this, we can conclude that Critter 2 has a random distribution and the point pattern in Critter 1 is not random.Given this information, we could say critter 1 is the prey as it has a clustered and not random distribution, maybe to avoid predation. A clustered distribution could be interpreted as critter 1 exhibiting a defensive behavior, such as forming groups or aggregating to enhance protection against predators. However, the scattered distribution of critter 2 might also be seen as an attempt to avoid being clustered and making it harder for predators to locate and capture them.
+
+Additional knowledge about the behavior and interactions of critter 1 and critter 2 could be used to further support these interpretation. We could ran a cross-type interaction analysis (Lcross) between critter 1 and critter 2 to provide a more comprehensive interpretation.
+
+```{r}
+#Binding Critter 1 and Critter 2 together
+
+Critter = rbind(critter1, critter2)
+
+tmp = Critter
+
+org = as.factor(ifelse(tmp$org == critter1$org, 'critter1', 'critter2'))
+
+pppCritter = ppp(tmp$x, tmp$y, window = predPreyWin, marks = org)
+
+split(pppCritter)
+
+plot(split(pppCritter))
+
+plot(pppCritter)
+
+```
+```{r}
+Critter1_to_Critter2 = envelope(pppCritter, Lcross, nsim=99, rank=1, global=F, i='critter1', j='critter2', simulate = expression(rlabel(pppCritter)))
+plot(Critter1_to_Critter2, .-r~r, legend=F)
+```
+
+```{r}
+Critter2_to_Critter1 = envelope(pppCritter, Lcross, nsim=99, rank=1, global=F, i='critter2', j='critter1', simulate = expression(rlabel(pppCritter)))
+plot(Critter2_to_Critter1, .-r~r, legend=F)
+```
+
+```{r}
+Critter1_to_Critter1 = envelope(pppCritter, Lcross, nsim=99, rank=1, global=F, i='critter1', j='critter1', simulate = expression(rlabel(pppCritter)))
+plot(Critter1_to_Critter1, .-r~r, legend=F)
+```
+```{r}
+Critter2_to_Critter2 = envelope(pppCritter, Lcross, nsim=99, rank=1, global=F, i='critter2', j='critter2', simulate = expression(rlabel(pppCritter)))
+plot(Critter2_to_Critter2, .-r~r, legend=F)
+```
+The observed cross-type interaction (r) from Critter 1 to Critter 2 falls outside the envelope (shaded region) into the negative region. This suggests a significant departure from Complete Spatial Randomness (CSR) and indicates a non-random spatial relationship between critter 1 and critter 2. It also means that there are fewer critter 2s around critter 1s than you would expected if they were randomly distributed. 
+The cross-type interaction (r) from Critter 1 to Critter 1 also tells us that there are more Critter 1s close to other Critter 1 than you would expect if they were randomly distributed which justifies and concludes our initial assumption that Critter 1s have a clustered and not random distribution. In the same regard, the cross interaction from Critter 2 to Critter 2 also tells us that the distribution of Critter 2 is random. 
+In conclusion, we could say that Critter 1s are avoiding Critter 2s, which means Critter 1s are the preys and Critter 2s are the predators. 
