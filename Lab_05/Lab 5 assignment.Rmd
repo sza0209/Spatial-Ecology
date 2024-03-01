@@ -43,6 +43,8 @@ There are 94 organisms on the landscape.
 The expected number of organisms based on the simulation parameters is 100. 
 The expected number of organisms based on the Poisson distribution is calculated using the formula lambda * x_max * y_max, where lambda is the average rate of occurrence per unit area, and x_max * y_max is the total area of the landscape. Thus, the expected number of organisms in a given area is calculated as the product of lambda and the area of interest.
 
+$\color{red}{\text{Nice. +3}}$
+
 # Challenge 2 (3 points)
 
 Verify that there no linear or quadratic pattern in the distribution of your organisms using fitted Poisson process models. Show the outcome of this analysis and explain your conclusion.
@@ -62,6 +64,8 @@ data.frame(model = c('Initial', 'Linear', 'Quadratic'),
 Answer to Challenge 2. 
 
 Using AIC values, the model with the lowest AIC is considered the best-fitting model among the alternatives. In this case, the Initial model has the lowest AIC (1067.405), suggesting that the model with no spatial terms has more support and is the best-fitting model among the three. The Linear and Quadratic models have higher AIC values compared to the Initial model.This suggests that adding linear or quadratic spatial terms to the model does not improve the fit significantly. Based on the AIC values, you may conclude that there is no strong evidence to support the inclusion of linear or quadratic terms in the model. 
+
+$\color{red}{\text{Perfect. +3}}$
 
 # Challenge 3 (14 points)
 
@@ -161,3 +165,5 @@ plot(Critter2_to_Critter2, .-r~r, legend=F)
 The observed cross-type interaction (r) from Critter 1 to Critter 2 falls outside the envelope (shaded region) into the negative region. This suggests a significant departure from Complete Spatial Randomness (CSR) and indicates a non-random spatial relationship between critter 1 and critter 2. It also means that there are fewer critter 2s around critter 1s than you would expected if they were randomly distributed. 
 The cross-type interaction (r) from Critter 1 to Critter 1 also tells us that there are more Critter 1s close to other Critter 1 than you would expect if they were randomly distributed which justifies and concludes our initial assumption that Critter 1s have a clustered and not random distribution. In the same regard, the cross interaction from Critter 2 to Critter 2 also tells us that the distribution of Critter 2 is random. 
 In conclusion, we could say that Critter 1s are avoiding Critter 2s, which means Critter 1s are the preys and Critter 2s are the predators. 
+
+$\color{red}{\text{Awesome work, Sinka. +14}}$
