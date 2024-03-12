@@ -1,0 +1,363 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+require(tidyterra)
+require(dismo)
+require(tidyverse)
+require(terra)
+require(predicts)
+require(ggnewscale)
+require(mgcv)
+require(randomForest)
+require(maxnet)
+require(enmSdmX)
+require(gbm)
+require(landscapemetrics)
+```
+
+
+
+# Challenge 1 (4 points)
+
+In the lab, we created 6 species distribution models (SDMs) for the same species using 6 different techniques. Plot the maps generated from (1) the bioclim envelope function, (2) the GLM model, and (3) the random forest model next to one another. What similarities and differences do you notice among these maps? What might explain some of these differences?
+
+```{r}
+vathData = read.csv('https://raw.githubusercontent.com/ValenteJJ/SpatialEcology/main/Week8/vath_2004.csv')
+
+vathPres = vathData %>% filter(VATH==1)
+vathAbs = vathData %>% filter(VATH==0)
+
+vathPresXy = as.matrix(vathPres %>% select(EASTING, NORTHING))
+vathAbsXy = as.matrix(vathAbs %>% select(EASTING, NORTHING))
+
+vathVal = read.csv('https://raw.githubusercontent.com/ValenteJJ/SpatialEcology/main/Week8/vath_VALIDATION.csv')
+
+vathValPres = vathVal %>% filter(VATH==1)
+vathValAbs = vathVal %>% filter(VATH==0)
+
+vathValXy = as.matrix(vathVal %>% select(EASTING, NORTHING))
+vathValPresXy = as.matrix(vathValPres %>% select(EASTING, NORTHING))
+vathValAbsXy = as.matrix(vathValAbs %>% select(EASTING, NORTHING))
+
+elev = rast('https://github.com/ValenteJJ/SpatialEcology/raw/main/Week8/elevation.tif')
+canopy = rast('https://github.com/ValenteJJ/SpatialEcology/raw/main/Week8/canopy.tif')
+mesic = rast('https://github.com/ValenteJJ/SpatialEcology/raw/main/Week8/mesic.tif')
+precip = rast('https://github.com/ValenteJJ/SpatialEcology/raw/main/Week8/precip.tif')
+
+crs(elev) = crs(mesic)
+crs(canopy) = crs(mesic)
+
+compareGeom(elev, canopy, stopOnError=F)
+compareGeom(elev, precip, stopOnError=F)
+compareGeom(elev, mesic, stopOnError=F)
+
+mesic = resample(x = mesic, y = elev, 'near')
+precip = resample(x = precip, y = elev, 'bilinear')
+
+mesic = mask(mesic, elev)
+precip = mask(precip, elev)
+
+probMatrix = focalMat(mesic, 1000, type='circle', fillNA=FALSE)
+mesic1km = focal(mesic, probMatrix, fun='sum')
+
+layers = c(canopy, elev, mesic, mesic1km, precip)
+names(layers) = c('canopy', 'elev', 'mesic', 'mesic1km', 'precip')
+plot(layers)
+
+pairs(layers, maxpixels=1000)
+
+layers = c(canopy, elev, mesic1km, precip)
+names(layers) = c('canopy', 'elev', 'mesic1km', 'precip')
+
+set.seed(23)
+
+backXy = data.frame(backgroundSample(layers, n=2000, p=vathPresXy))
+
+ggplot()+
+  geom_raster(data=elev, aes(x=x, y=y, fill=elev_km))+
+  geom_point(data=backXy, aes(x=x, y=y))+
+  geom_point(data=vathPres, aes(x=EASTING, y=NORTHING), color='red', alpha=0.3)+
+  coord_fixed()
+
+presCovs = extract(layers, vathPresXy)
+backCovs = extract(layers, backXy)
+valCovs = extract(layers, vathValXy)
+
+presCovs = data.frame(vathPresXy, presCovs, pres=1)
+backCovs = data.frame(backXy, backCovs, pres=0)
+valCovs = data.frame(vathValXy, valCovs)
+
+presCovs = presCovs[complete.cases(presCovs),]
+backCovs = backCovs[complete.cases(backCovs),]
+valCovs = valCovs[complete.cases(valCovs),]
+
+
+backCovs = backCovs %>% select(-ID)
+colnames(presCovs)[1:2] = c('x', 'y')
+
+presBackCovs = rbind(presCovs, backCovs)
+
+## Building the bioclim envelope function model
+tmp = presCovs %>% select(elev, precip, mesic1km, canopy) %>% 
+  as.matrix()
+
+bioclim = envelope(tmp)
+
+
+plot(bioclim, a=1, b=2, p=0.95)
+plot(bioclim, a=1, b=3, p=0.95)
+plot(bioclim, a=3, b=4, p=0.95)
+
+bioclimMap = predict(layers, bioclim)
+plot(bioclimMap)
+
+## Building the GLM model
+glmModel = glm(pres ~ canopy + elev + I(elev^2) + mesic1km + precip, family='binomial', data=presBackCovs)
+
+summary(glmModel)
+
+glmMap = predict(layers, glmModel, type='response')
+plot(glmMap)
+
+## Building the random forest model
+tuneRF(y = as.factor(presBackCovs$pres), x=presBackCovs[,3:6], stepFactor = 2, ntreeTry = 500)
+rfModel = randomForest(as.factor(pres) ~ canopy + elev + mesic1km + precip, data=presBackCovs, mtry=2, ntree=500, na.action = na.omit)
+
+rfMap = predict(layers, rfModel, type='prob', index=2)
+plot(rfMap)
+```
+Answer to Challenge 1.
+
+The maps all captured certain areas that had similar environmental conditions suitable for the species. The bioclim envelope function modeled the observed distribution of a species based on environmental conditions. It considered climate variables to predict habitat suitability. The resulting map highlights areas where the species is likely to occur based on climatic factors. The differences from other models may arise due to the specific climatic variables used and their interactions.
+The GLM is a statistical approach that relates species occurrence data to environmental predictors. It assumes a linear relationship between predictors and species presence-absence. The GLM map might emphasize areas where the species’ habitat conditions align with the predictor variables. The differences could stem from the choice of predictors, model assumptions, and the linear relationship assumption.
+Random Forest is an ensemble technique that combines multiple decision trees. It handles non-linear relationships and interactions between predictors. The map generated by Random Forest considers a broader range of environmental factors. Differences may arise due to the complexity of interactions captured by the ensemble of trees.
+Potential Explanations for Differences:
+Model Complexity: The GLM assumes linearity, while Random Forest captures non-linearities. This could lead to contrasting predictions.
+Variable Importance: Each model assigns a different importance to environmental variables. Some variables may dominate predictions in one model but not in others.
+Overfitting: Random Forest can overfit if not tuned properly, leading to high accuracy on training data but poor generalization.
+Spatial Autocorrelation: The spatial arrangement of data points affects model performance. Some models handle spatial autocorrelation better than others.
+Data Quality: The quality and resolution of environmental data (e.g., elevation, canopy cover) can impact model outcomes.
+
+
+# Challenge 2 (4 points)
+
+When we fit our GLM in lab, we used background points, rather than true absence points, to represent pseudo-absences. Fit the exact same GLM model, only this time use presence and true absence data. That is, replace the background rows in the dataframe with rows that represent actual sites where surveys were completed but Varied Thrush were not detected. Once you've fit the GLM, build a new SDM from this fitted model and visually compare the prediction surface to that built based on the presence-background model. What discrepancies do you notice, and what is your intuition regarding which of these two models is more reliable?
+
+```{r}
+presCovs = extract(layers, vathPresXy)
+absCovs = extract(layers, vathAbsXy)
+
+presCovs = data.frame(vathPresXy, presCovs, pres=1)
+absCovs = data.frame(vathAbsXy, absCovs, pres=0)
+
+presCovs = presCovs[complete.cases(presCovs),]
+absCovs = absCovs[complete.cases(absCovs),]
+
+presAbsCovs = rbind(presCovs, absCovs)
+
+glmModel2 = glm(pres ~ canopy + elev + I(elev^2) + mesic1km + precip, family='binomial', data=presAbsCovs)
+
+summary(glmModel2)
+
+glmMap2 = predict(layers, glmModel2, type='response')
+plot(glmMap2)  ## GLM model using true absence data
+plot(glmMap)  ## GLM model that used background points
+```
+Answer to Challenge 2. 
+
+There are certain areas where the models predict differently, which indicate the impact of using true absences in model training.The presence-true absence model (glmModel2) uses true absence data, providing a more realistic representation of the absence class.Intuitively, the model that incorporates true absence data (glmModel2) will often be considered more reliable. True absences provide information about areas where the species was surveyed but not detected, offering a more accurate representation of the species' absence.
+
+# Challenge 3 (4 points)
+
+Now plot the relationship between the 4 explanatory variables and the predicted occupancy values based on the two fitted GLM models (presence-background and presence-absence). Recall that we did this in the latter part of our lab. Do you notice any differences in the covariate patterns between the two models? Does this help you interpret the discrepancies between the predicted surfaces from the two models?
+
+```{r}
+## Elevation
+glmPresenceBackData = expand.grid(elev = seq(min(backCovs$elev), max(backCovs$elev), length=1000),
+                  canopy = mean(backCovs$canopy),
+                  precip = mean(backCovs$precip),
+                  mesic1km = mean(backCovs$mesic1km))
+
+glmPresenceBackData$glm = predict(glmModel, glmPresenceBackData, type = 'response')
+
+
+glmPresenceAbsenceData = expand.grid(elev = seq(min(absCovs$elev), max(absCovs$elev), length=1000),
+                  canopy = mean(absCovs$canopy),
+                  precip = mean(absCovs$precip),
+                  mesic1km = mean(absCovs$mesic1km))
+
+glmPresenceAbsenceData$glm = predict(glmModel2, glmPresenceAbsenceData, type = 'response')
+
+# Plotting the Elevation relationships for GLM models
+par(mfrow = c(2, 2), mar = c(4, 4, 2, 2))
+plot(glmPresenceBackData$elev, glmPresenceBackData$glm, type = 'l', col = 'blue', xlab = 'elev', ylab = 'Predicted Occupancy (presence-background)', main = 'Elevation vs. Predicted Occupancy')
+lines(glmPresenceAbsenceData$elev, glmPresenceAbsenceData$glm, type = 'l', col = 'red')
+
+## Canopy
+glmPresenceBackData <- expand.grid(
+  canopy = seq(min(backCovs$canopy), max(backCovs$canopy), length = 1000),
+  elev = mean(backCovs$elev),
+  precip = mean(backCovs$precip),
+  mesic1km = mean(backCovs$mesic1km)
+)
+
+glmPresenceBackData$glm <- predict(glmModel, glmPresenceBackData, type = 'response')
+
+glmPresenceAbsenceData <- expand.grid(
+  canopy = seq(min(absCovs$canopy), max(absCovs$canopy), length = 1000),
+  elev = mean(absCovs$elev),
+  precip = mean(absCovs$precip),
+  mesic1km = mean(absCovs$mesic1km)
+)
+
+glmPresenceAbsenceData$glm <- predict(glmModel2, glmPresenceAbsenceData, type = 'response')
+
+par(mfrow = c(2, 2), mar = c(4, 4, 2, 2))
+plot(glmPresenceBackData$canopy, glmPresenceBackData$glm, type = 'l', col = 'blue', xlab = 'canopy', ylab = 'Predicted Occupancy (presence-background)', main = 'Canopy vs. Predicted Occupancy')
+lines(glmPresenceAbsenceData$canopy, glmPresenceAbsenceData$glm, type = 'l', col = 'red')
+
+
+## Precipitation
+glmPresenceBackData <- expand.grid(
+  precip = seq(min(backCovs$precip), max(backCovs$precip), length = 1000),
+  elev = mean(backCovs$elev),
+  canopy = mean(backCovs$canopy),
+  mesic1km = mean(backCovs$mesic1km)
+)
+
+glmPresenceBackData$glm <- predict(glmModel, glmPresenceBackData, type = 'response')
+
+glmPresenceAbsenceData <- expand.grid(
+  precip = seq(min(absCovs$precip), max(absCovs$precip), length = 1000),
+  elev = mean(absCovs$elev),
+  canopy = mean(absCovs$canopy),
+  mesic1km = mean(absCovs$mesic1km)
+)
+
+glmPresenceAbsenceData$glm <- predict(glmModel2, glmPresenceAbsenceData, type = 'response')
+
+par(mfrow = c(2, 2), mar = c(4, 4, 2, 2))
+plot(glmPresenceBackData$precip, glmPresenceBackData$glm, type = 'l', col = 'blue', xlab = 'precip', ylab = 'Predicted Occupancy (presence-background)', main = 'Precipitation vs. Predicted Occupancy')
+lines(glmPresenceAbsenceData$precip, glmPresenceAbsenceData$glm, type = 'l', col = 'red')
+
+## Mesic1km
+glmPresenceBackData <- expand.grid(
+  mesic1km = seq(min(backCovs$mesic1km), max(backCovs$mesic1km), length = 1000),
+  elev = mean(backCovs$elev),
+  canopy = mean(backCovs$canopy),
+  precip = mean(backCovs$precip)
+)
+
+glmPresenceBackData$glm <- predict(glmModel, glmPresenceBackData, type = 'response')
+
+glmPresenceAbsenceData <- expand.grid(
+  mesic1km = seq(min(absCovs$mesic1km), max(absCovs$mesic1km), length = 1000),
+  elev = mean(absCovs$elev),
+  canopy = mean(absCovs$canopy),
+  precip = mean(absCovs$precip)
+)
+
+glmPresenceAbsenceData$glm <- predict(glmModel2, glmPresenceAbsenceData, type = 'response')
+
+par(mfrow = c(2, 2), mar = c(4, 4, 2, 2))
+plot(glmPresenceBackData$mesic1km, glmPresenceBackData$glm, type = 'l', col = 'blue', xlab = 'mesic1km', ylab = 'Predicted Occupancy (presence-background)', main = 'Mesic1km vs. Predicted Occupancy')
+lines(glmPresenceAbsenceData$mesic1km, glmPresenceAbsenceData$glm, type = 'l', col = 'red')
+```
+Answer to Chellenge 3.
+Comparing the slopes of the lines representing the relationship between each explanatory variable and predicted occupancy for both models, there are differences in the magnitudes of effects which potentially suggests that the models are capturing different relationships between predictors and the response variable. For example, the slope of the canopy variable is steeper in one model compared to the other, which indicates that canopy cover has a stronger influence on predicted occupancy in that model.
+Looking at the direction of the relationships between each explanatory variable and predicted occupancy, the direction of the relationship seems consistent between the two models (i.e., both positive or both negative). This suggests agreement between the models regarding how the predictors affect the response. However, if the direction of the relationship were to differ between models for certain variables, this will indicate discrepancies in how predictors are associated with occupancy.
+Considering the relative importance of each explanatory variable in both models, the presence-absence data model assigns higher importance to all the variables compared to the presence-background model. This that these variables have a more significant impact on predicted occupancy in the presence-absence model. Understanding these variable importance can provide insights into why the models produced different predictions.
+
+# Challenge 4 (4 points)
+
+Varied Thrush are considered forest-dependent, and thus one might characterize mesic forests as "habitat" for the species. Calculate the total amount of mesic forest in the study area, and the mean size of the mesic forest patches.
+
+Using the SDM built from the random forest model, convert the landscape into "habitat" and "non-habitat." To do this, choose a threshold value in your SDM and convert all cells with predicted outcomes greater than this threshold to 1 and all cells with predicted values below your threshold to 0. Justify your choice of your threshold value. Now calculate the total amount of habitat and mean size of habitat patches based on this new raster (i.e., create patches of "habitat" based on aggregations of cells you deemed 1). How do the habitat amount and patch size values compare between the mesic forest approach and the SDM-based approach? In what situations might you rely on one map over the other?
+
+```{r}
+mesic = rast('https://github.com/ValenteJJ/SpatialEcology/raw/main/Week8/mesic.tif')
+total_mesic_area <- sum(mesic[] * res(mesic)[1] * res(mesic)[2], na.rm = TRUE)
+total_mesic_area
+
+# Calculating the mean size of mesic forest patches
+MeanPatch = lsm_c_area_mn(mesic, directions=4)
+MeanPatch
+
+threshold <- 0.5
+
+# Converting predicted outcomes to binary habitat/non-habitat based on the threshold
+habitat_raster <- rfMap
+habitat_raster[habitat_raster < threshold] = 0
+habitat_raster[habitat_raster >= threshold] = 1
+
+habitat_raster_area <- sum(habitat_raster[] * res(habitat_raster)[1] * res(habitat_raster)[2], na.rm = TRUE)
+habitat_raster_area
+
+# Calculating the mean size of new raster
+MeanPatch2 = lsm_c_area_mn(habitat_raster, directions=4)
+MeanPatch2
+
+```
+Answer to Challenge 4.
+
+The choice of the threshold value (in this case, 0.5) is often subjective and depends on the specific goals of the analysis and the trade-off between false positives and false negatives.
+A threshold of 0.5 is a common starting point, as it corresponds to a balanced classification decision. However, the threshold may be adjusted based on the characteristics of your species and the desired model performance.
+
+The total habitat area based on the SDM is considerably lower than the total mesic forest area. This difference may be attributed to the model's predictions capturing a subset of the mesic forest as suitable habitat. Similarly, the mean patch size for the mesic forest is higher (class 1) compared to the SDM-based habitat patches (class 1). As such, it's essential to consider the trade-off between model-based predictions and known habitat types. The mesic forest approach provides information based on known habitat types, offering a direct representation of mesic forest areas. The SDM-based approach considers a broader set of environmental variables, capturing habitat suitability predictions. However, it might result in overestimation or underestimation, and the patch sizes may differ significantly.
+One might rely on the mesic forest map when you have high confidence in the accuracy of mesic forest data and when the species' habitat preferences align well with known habitat types. You can consider the SDM-based map when you want to incorporate additional environmental variables, and when the goal is to understand overall habitat suitability, even if the predictions may not precisely match known habitat types.
+The choice of the threshold in the SDM-based approach also plays a crucial role. Adjusting the threshold may impact the balance between false positives and false negatives.  Different threshold values can be explored to assess model performance metrics.
+
+# Challenge 5 (4 points)
+
+When we fit the Maxent model in the lab, we used a regularization constant of 1. Fit the model two more times, using regularization (regmult) constants of 0.5 and 3. Construct figures showing the relationship between the 4 explanatory variables and the predicted outcome from these 3 fitted Maxent models. What is the regularization constant doing? Hint: you may need to Google it.
+
+```{r}
+pbVect = presBackCovs$pres
+covs = presBackCovs %>% select(canopy:precip)
+
+maxentModel1 = maxnet(p = pbVect,
+                     data= covs,
+                     regmult = 1,
+                     classes='lqpht')
+
+plot(maxentModel1, type='logistic')
+
+maxentMap1 = predictMaxNet(maxentModel1, layers, type='logistic')
+
+par(mfrow=c(1,1))
+plot(maxentMap1)
+
+maxentModel0.5 = maxnet(p = pbVect,
+                     data= covs,
+                     regmult = 0.5,
+                     classes='lqpht')
+
+plot(maxentModel0.5, type='logistic')
+
+maxentMap0.5 = predictMaxNet(maxentModel0.5, layers, type='logistic')
+
+par(mfrow=c(1,1))
+plot(maxentMap0.5)
+
+maxentModel3 = maxnet(p = pbVect,
+                     data= covs,
+                     regmult = 3,
+                     classes='lqpht')
+
+plot(maxentModel3, type='logistic')
+
+maxentMap3 = predictMaxNet(maxentModel3, layers, type='logistic')
+
+par(mfrow=c(1,1))
+plot(maxentMap3)
+```
+Answer to Chellenge 5.
+
+The regularization constant, often denoted as regmult in the context of Maxent models, is a tuning parameter that controls the amount of regularization or penalty applied to the model. Specifically, it regulates the complexity of the model by penalizing the magnitude of coefficients for each explanatory variable. A higher value of regmult results in stronger regularization, imposing a greater penalty on complex models with large coefficients.In the context of Maxent models, which are commonly used for species distribution modeling with presence-only data, regularization helps prevent overfitting. Overfitting occurs when a model captures noise or random fluctuations in the training data, leading to poor generalization performance on new, unseen data. Regularization discourages the model from fitting the training data too closely, promoting a more parsimonious and generalizable model.
+Low regmult (e.g., 0.5): results in a Weaker regularization. The model may be more prone to overfitting, capturing noise in the training data. Coefficients for explanatory variables may take larger values.
+Medium regmult (e.g., 1): results in a Moderate regularization. Balances model complexity and fit to the data.This is usually a common default choice in Maxent models.
+High regmult (e.g., 3): results in a Stronger regularization. The model is more constrained, favoring simpler models. Coefficients for explanatory variables tend to be smaller.
+In summary, the regularization constant in Maxent models allows you to control the trade-off between model complexity and fit to the data.
