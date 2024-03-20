@@ -107,8 +107,8 @@ colnames(absCovs)[1:2] = c('x', 'y')
 presBackCovs = rbind(presCovs, backCovs)
 presAbsCovs = rbind(presCovs, absCovs)
 
-valCovs = valCovs %>% mutate(VATH = vathVal$VATH)
-valCovs = valCovs[complete.cases(valCovs),]
+# valCovs = valCovs %>% mutate(VATH = vathVal$VATH)
+# valCovs = valCovs[complete.cases(valCovs),]
 
 
 # Fitting bioclim envelope model
@@ -174,8 +174,10 @@ In the lab, we fit 6 SDMs. We then calculated discrimination statistics for all 
 ```
 
 ```{r}
-tmp = valCovs %>% mutate(VATH = vathVal$VATH)
-tmp = tmp[complete.cases(tmp),]
+tmp = valCovs
+
+# %>% mutate(VATH = vathVal$VATH)
+# tmp = tmp[complete.cases(tmp),]
 
 valData = data.frame('ID' = 1:nrow(tmp)) %>% 
   mutate(obs = tmp$VATH,
@@ -190,20 +192,21 @@ summaryEval = data.frame(matrix(nrow=0, ncol=9))
 
 nModels = ncol(valData)-2
 
+i = 1
 
 for(i in 1:nModels){
   
   #AUC
-  auc = auc(valData, which.model = i)
+  auc = PresenceAbsence::auc(valData, which.model = i)
   
   #Find threshold to maximize Kappa
   kappaOpt = optimal.thresholds(valData, which.model = i, opt.methods=3)
   
   #Sensitivity
-  sens = sensitivity(cmx(valData, which.model=i, threshold = kappaOpt[[2]]))
+  sens = PresenceAbsence::sensitivity(cmx(valData, which.model=i, threshold = kappaOpt[[2]]))
   
   #Specificity
-  spec = specificity(cmx(valData, which.model = i, threshold = kappaOpt[[2]]))
+  spec = PresenceAbsence::specificity(cmx(valData, which.model = i, threshold = kappaOpt[[2]]))
   
   #True skill statistic
   tss = sens$sensitivity + spec$specificity - 1
@@ -359,15 +362,18 @@ glmMap2 = predict(layers, glmModel2, type='response')
 valCovs$VATH <- factor(valCovs$VATH, levels = c("0", "1"))
 
 cutoff <- 0.5  
+
+# valCovs$pred_glmModel1 doesn't exist...
+
 binary_pred_glmModel1 <- factor(ifelse(valCovs$pred_glmModel1 > cutoff, "1", "0"), levels = c("0", "1"))
 binary_pred_glmModel2 <- factor(ifelse(valCovs$pred_glmModel2 > cutoff, "1", "0"), levels = c("0", "1"))
 
 # Calculate confusion matrix for glmModel1 predictions
-conf_matrix_glmModel1 <- confusionMatrix(binary_pred_glmModel1, valCovs$VATH)
+conf_matrix_glmModel1 <- caret::confusionMatrix(binary_pred_glmModel1, valCovs$VATH)
 print(conf_matrix_glmModel1)
 
 # Calculate confusion matrix for glmModel2 predictions
-conf_matrix_glmModel2 <- confusionMatrix(binary_pred_glmModel2, valCovs$VATH)
+conf_matrix_glmModel2 <- caret::confusionMatrix(binary_pred_glmModel2, valCovs$VATH)
 print(conf_matrix_glmModel2)
 ```
 
