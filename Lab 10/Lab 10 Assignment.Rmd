@@ -1,0 +1,575 @@
+---
+title: "R Notebook"
+output:
+  html_document:
+    df_print: paged
+---
+```{r}
+rm(list = ls())
+
+require(tidyverse)
+require(terra)
+require(tidyterra)
+require(sf)
+require(adehabitatHR)
+require(adehabitatLT)
+```
+
+
+
+# Challenge 1 (4 points)
+
+Create a table with 6 rows and 5 columns. Each row should represent one panther. The first column should represent the panther's ID, and the other 4 columns should represent the estimated 95% home range from the 4 methods we used (MCP, KDE, a-LoCoH, and Brownian bridge). Make sure that all of your units for your home range estimates are the same. Ensure that the final table outputs from the code below.
+
+
+```{r}
+panthers = st_read('/vsicurl/https://github.com/ValenteJJ/SpatialEcology/raw/main/Week10/panthers.shp') %>% 
+  mutate(CatID = as.factor(CatID))
+
+panthersSp = as(panthers, 'Spatial')
+
+## MCP
+mcp95 = mcp(panthersSp[,'CatID'], percent = 95, unin='m', unout='ha')
+mcp95Sf = st_as_sf(mcp95)
+mcp95
+
+## KDE
+kernelHrefEpa = kernelUD(panthersSp[,'CatID'], h='href', kern='epa')
+kde95Sf = st_as_sf(getverticeshr(kernelHrefEpa, percent=95))
+kde95Sf
+
+## a-LoCoH
+panther147 = panthersSp[panthersSp$CatID==147,]
+aInit = round(max(dist(coordinates(panther147))),0)
+aSearch147 = seq(aInit, 2*aInit, by=3000) #distance in m
+locohArange147 = LoCoH.a.area(SpatialPoints(coordinates(panther147)), arange=aSearch147)
+locohA147 = LoCoH.a(SpatialPoints(coordinates(panther147)), a=aSearch147[5])
+locohASf147 = st_as_sf(locohA147)
+locohA92Sf_147 = locohASf147[97,]
+
+panther143 = panthersSp[panthersSp$CatID==143,]
+aInit = round(max(dist(coordinates(panther143))),0)
+aSearch143 = seq(aInit, 2*aInit, by=3000) #distance in m
+locohArange143 = LoCoH.a.area(SpatialPoints(coordinates(panther143)), arange=aSearch143)
+locohA143 = LoCoH.a(SpatialPoints(coordinates(panther143)), a=aSearch143[3])
+locohASf143 = st_as_sf(locohA143)
+locohA91Sf_143 = locohASf143[113,]
+
+panther137 = panthersSp[panthersSp$CatID==137,]
+aInit = round(max(dist(coordinates(panther137))),0)
+aSearch137 = seq(aInit, 2*aInit, by=3000) #distance in m
+locohArange137 = LoCoH.a.area(SpatialPoints(coordinates(panther137)), arange=aSearch137)
+locohA137 = LoCoH.a(SpatialPoints(coordinates(panther137)), a=aSearch137[3])
+locohASf137 = st_as_sf(locohA137)
+locohA95Sf_137 = locohASf137[102,]
+
+panther131 = panthersSp[panthersSp$CatID==131,]
+aInit = round(max(dist(coordinates(panther131))),0)
+aSearch131 = seq(aInit, 2*aInit, by=3000) #distance in m
+locohArange131 = LoCoH.a.area(SpatialPoints(coordinates(panther131)), arange=aSearch131)
+locohA131 = LoCoH.a(SpatialPoints(coordinates(panther131)), a=aSearch131[4])
+locohASf131 = st_as_sf(locohA131)
+locohA95Sf_131 = locohASf131[76,]
+
+panther130 = panthersSp[panthersSp$CatID==130,]
+aInit = round(max(dist(coordinates(panther130))),0)
+aSearch130 = seq(aInit, 2*aInit, by=3000) #distance in m
+locohArange130 = LoCoH.a.area(SpatialPoints(coordinates(panther130)), arange=aSearch130)
+locohA130 = LoCoH.a(SpatialPoints(coordinates(panther130)), a=aSearch130[13])
+locohASf130 = st_as_sf(locohA130)
+locohA94Sf_130 = locohASf130[80,]
+
+panther100 = panthersSp[panthersSp$CatID==100,]
+aInit = round(max(dist(coordinates(panther100))),0)
+aSearch100 = seq(aInit, 2*aInit, by=3000) #distance in m
+locohArange100 = LoCoH.a.area(SpatialPoints(coordinates(panther100)), arange=aSearch100)
+locohA100 = LoCoH.a(SpatialPoints(coordinates(panther100)), a=aSearch100[5])
+locohASf100 = st_as_sf(locohA100)
+locohA93Sf_100 = locohASf100[98,]
+
+## Brownian Bridge
+substrRight = function(x, n){
+  substr(x, nchar(x) - n+1, nchar(x))
+}
+
+panthersSp = panthers %>% 
+  mutate(Juldate = as.character(Juldate)) %>% 
+  mutate(date = as.numeric(substrRight(Juldate, 3))) %>% 
+  mutate(Date = as.Date(date, origin=as.Date("2006-01-01"))) %>% 
+  mutate(Date = as.POSIXct(Date, "%Y-%m-%d")) %>% 
+  as('Spatial')
+
+pantherLtraj = as.ltraj(xy=coordinates(panthersSp), date=panthersSp$Date, id=panthersSp$CatID, typeII=T)
+sigma1 = liker(pantherLtraj, sig2=450, rangesig1=c(2, 100))
+sigma1
+
+bb147 = kernelbb(pantherLtraj[6], sig=7.2, sig2=450, grid=500)
+bb147_95 = st_as_sf(getverticeshr(bb147, percent=95))
+
+bb143 = kernelbb(pantherLtraj[6], sig=10.8, sig2=450, grid=500)
+bb143_95 = st_as_sf(getverticeshr(bb143, percent=95))
+
+bb137 = kernelbb(pantherLtraj[6], sig=15.1, sig2=450, grid=500)
+bb137_95 = st_as_sf(getverticeshr(bb137, percent=95))
+
+bb131 = kernelbb(pantherLtraj[6], sig=14.0, sig2=450, grid=500)
+bb131_95 = st_as_sf(getverticeshr(bb131, percent=95))
+
+bb130 = kernelbb(pantherLtraj[6], sig=18.1, sig2=450, grid=500)
+bb130_95 = st_as_sf(getverticeshr(bb130, percent=95))
+
+bb100 = kernelbb(pantherLtraj[6], sig=13.8, sig2=450, grid=500)
+bb100_95 = st_as_sf(getverticeshr(bb100, percent=95))
+
+
+### Creating table
+areaMCP <- c(mcp95$area[1], mcp95$area[2], mcp95$area[3], mcp95$area[4], mcp95$area[5], mcp95$area[6])
+areaKDE <- c(kde95Sf$area[1], kde95Sf$area[2], kde95Sf$area[3], kde95Sf$area[4], kde95Sf$area[5], kde95Sf$area[6])
+areaLoCoH <- c(locohA93Sf_100$area, locohA94Sf_130$area, locohA95Sf_131$area, locohA95Sf_137$area, locohA91Sf_143$area, locohA92Sf_147$area)
+areaBB <- c(bb100_95$area, bb130_95$area, bb131_95$area, bb137_95$area, bb143_95$area, bb147_95$area)
+
+pantherIDs <- c(100, 130, 131, 137, 143, 147)
+
+pantherTable <- data.frame(
+  PantherID = pantherIDs,
+  MCP = areaMCP,
+  KDE = areaKDE,
+  aLoCoH = areaLoCoH,
+  BrownianBridge = areaBB 
+)
+
+print(pantherTable)
+
+```
+
+
+# Challenge 2 (4 points)
+
+Build a boxplot showing the distribution of home range sizes. Your x-axis should have 4 categories (one for each home range type), and your y-axis should show the distribution of the home ranges for the 6 panthers. Which home range estimates tend to be largest? Which ones tend to be smallest? What is your intuitive explanation for why this pattern occurs?
+
+```{r}
+library(ggplot2)
+library(tidyr)
+
+pantherTableLong <- pivot_longer(pantherTable, 
+                                 cols = c(MCP, KDE, aLoCoH, BrownianBridge), 
+                                 names_to = "Method", 
+                                 values_to = "HomeRange")
+
+ggplot(pantherTableLong, aes(x = Method, y = HomeRange)) +
+  geom_boxplot() +
+  theme_minimal() +
+  labs(x = "Home Range Estimation Method", y = "Home Range Size (ha)", 
+       title = "Distribution of Home Range Sizes by Method") +
+  geom_jitter(width = 0.2, color = "blue", alpha = 0.5)
+```
+
+Answer to Challenge 2
+From the boxplot, it appears that the a-LoCoH method appears to give the smallest estimates of home range sizes, as indicated by the lower median and the small range of the interquartile range (IQR). The lack of significant outliers suggests tight clustering and potentially more conservative estimates of home range.
+
+The MCP (Minimum Convex Polygon) home range estimates tend to be the largest. This is evidenced by both the median value of the MCP method being the highest and the interquartile range stretching much further upwards compared to the other methods. MCP includes all data points and creates a convex polygon that may encompass large areas that are not actually used by the panthers but are within the outermost points of their observed locations.There are outliers indicating that in some cases, the MCP method can give exceptionally large home range estimates.
+
+The observed pattern can be explained by the underlying assumptions and calculation methods of each technique:
+a-LoCoH tends to provide smaller home ranges because it creates localized convex hulls around each point and then combines them. This method is less likely to include large, unutilized areas compared to others that might overestimate by connecting outermost points (like MCP).
+Brownian Bridge takes into account the movement paths between points, leading to estimates that might be more accurate reflections of the actual areas used by the panthers, as it considers the probabilistic use of space between observed locations.
+KDE uses a smoothing function over the point data, which can sometimes overestimate home ranges by creating a smooth surface that may extend beyond the actual area used by the panthers, especially when the smoothing parameter is not optimally selected.
+MCP simply connects the outermost points to form a convex polygon, which can significantly overestimate home range as it includes all points, regardless of how infrequently they might be used.
+
+
+# Challenge 3 (3 points)
+
+Choose 1 panther and generate a 100% home range based on the MCP. Calculate (and report) the proportion of this polygon comprised of wet and dry forest. Do you think these amounts are representative of the wet and dry forest available to your panther? Why or why not?
+
+```{r}
+selected_panther <- panthers %>% 
+  filter(CatID == "147") %>%
+  st_as_sf()
+
+selected_panther_sp <- as(selected_panther, 'Spatial')
+mcp100 <- mcp(selected_panther_sp, percent = 100, unin='m', unout='km2')
+mcp100
+mcp100_sf <- st_as_sf(mcp100)
+
+land = rast('https://github.com/ValenteJJ/SpatialEcology/raw/main/Week10/panther_landcover.tif')
+
+classification = read.table('https://raw.githubusercontent.com/ValenteJJ/SpatialEcology/main/Week10/landcover%20reclass.txt', header=T) 
+
+head(classification)
+
+unique(classification$Description2)
+
+land = classify(land, classification[,c(1,3)])
+land = categories(land, value=unique(classification[,c(3,4)]))
+
+
+plot(land)
+plot(st_geometry(mcp100_sf), add=TRUE, border='red')
+clipped_land <- crop(land, mcp100_sf)
+clipped_land <- mask(clipped_land, mcp100_sf)
+
+plot(clipped_land) 
+
+#Wet forest
+wetForest = clipped_land
+values(wetForest) = 0
+wetForest[clipped_land %in% c(10,12)] = 1
+
+probMatrix = focalMat(wetForest, 5000, type='circle', fillNA=FALSE)
+wetFocal = focal(wetForest, probMatrix, fun='sum', na.rm=T)
+
+
+#Dry forest
+dryForest = clipped_land
+values(dryForest) = 0
+dryForest[clipped_land %in% c(11, 13)] = 1
+
+probMatrix = focalMat(dryForest, 5000, type='circle', fillNA=FALSE)
+dryFocal = focal(dryForest, probMatrix, fun='sum', na.rm=T)
+
+total_area_mcp <- st_area(mcp100_sf) * 0.0001
+clipped_land <- classify(clipped_land, rcl = cbind(c(10, 12, 11, 13), c(1, 1, 2, 2))) 
+cell_area_ha <- res(clipped_land)[1] * res(clipped_land)[2] * 0.0001  # Convert sq meters to hectares
+
+# Calculating the number of cells for wet and dry forests
+num_cells_wet <- sum(clipped_land[] == 1, na.rm = TRUE)
+num_cells_dry <- sum(clipped_land[] == 2, na.rm = TRUE)
+
+# Calculating total areas for wet and dry forests in hectares
+total_area_wet_ha <- num_cells_wet * cell_area_ha
+total_area_dry_ha <- num_cells_dry * cell_area_ha
+
+# Calculating the total area of the MCP in hectares for proportion calculation
+total_area_mcp_ha <- as.numeric(st_area(mcp100_sf)) * 0.0001
+
+# Calculating proportions of wet and dry forests within the MCP
+proportion_wet <- total_area_wet_ha / total_area_mcp_ha
+proportion_dry <- total_area_dry_ha / total_area_mcp_ha
+
+# Output the results
+cat("Wet Forest Area (ha):", total_area_wet_ha, "\n")
+cat("Dry Forest Area (ha):", total_area_dry_ha, "\n")
+cat("Proportion of Wet Forest in MCP:", proportion_wet, "\n")
+cat("Proportion of Dry Forest in MCP:", proportion_dry, "\n")
+```
+
+Answer to Challenge 3.
+The results obtained indicate that within the 100% MCP home range for the selected panther, approximately 58.17% is covered by wet forest, and about 14.20% is covered by dry forest. These amounts could possibly be representative of the wet and dry forest available to the panther.  These proportions suggest a few key points regarding habitat preference, availability, and the representativeness of these habitat types within the panther's home range.  The predominance of wet forest within the panther's home range could imply a preference for or higher availability of this habitat type. Wet forests often provide rich resources such as water availability, prey abundance, and cover for stalking prey or hiding. If the panther spends a significant portion of its time in wet forests, this could indicate that these areas meet its ecological needs better than dry 
+Whether these amounts are representative of the wet and dry forest available to the panther depends on several factors. If the area surrounding the MCP is significantly different in terms of habitat composition, the MCP's habitat proportions might not be representative of the panther's potential range.Seasonal changes or longer-term ecological shifts could affect habitat availability and quality, influencing the panther's habitat use patterns over time.Human activities leading to habitat loss, fragmentation, or alteration could disproportionately affect the availability and quality of wet and dry forests, impacting their representativeness within the MCP.
+In conclusion, while the MCP's habitat composition provides valuable insights into the panther's habitat use and preferences, determining the representativeness of these habitats requires a broader landscape perspective, consideration of ecological and temporal dynamics, and an understanding of human impacts on habitat availability and quality. The high proportion of wet forest in the MCP could be representative of the panther's ecological needs and behaviors but needs to be interpreted within a wider context to fully understand its implications.
+
+
+# Challenge 4 (6 points)
+
+Using the same panther you chose for Challenge 3, generate 10 sf objects, one representing each of the 10%, 20%, 30%, ..., 90%, and 100% home ranges based on a Brownian bridge model. Extract the proportion of each of those territories comprised of dry forest and wet forest. Now generate two line graphs, one for wet forest and one for dry. On the x-axis, plot increasing home range size (10-100%). On the y-axis plot the proportion of the territory comprised of wet/dry forest, and link these with a line. Finally, add a horizontal line that shows the rough proportion of that forest type available to the panther (based on challenge 3). Show your output below.
+
+```{r}
+Sf_10 = st_as_sf(getverticeshr(bb147, percent=10))
+Sf_20 = st_as_sf(getverticeshr(bb147, percent=20))
+Sf_30 = st_as_sf(getverticeshr(bb147, percent=30))
+Sf_40 = st_as_sf(getverticeshr(bb147, percent=40))
+Sf_50 = st_as_sf(getverticeshr(bb147, percent=50))
+Sf_60 = st_as_sf(getverticeshr(bb147, percent=60))
+Sf_70 = st_as_sf(getverticeshr(bb147, percent=70))
+Sf_80 = st_as_sf(getverticeshr(bb147, percent=80))
+Sf_90 = st_as_sf(getverticeshr(bb147, percent=90))
+Sf_100 = st_as_sf(getverticeshr(bb147, percent=99))
+
+habMcp10_wet = extract(wetForest, Sf_10) %>% 
+  rename(landcover = Description2) %>% 
+  group_by(ID, landcover) %>% 
+  summarise(habCells = n()) %>% 
+  ungroup() %>% 
+  group_by(ID) %>% 
+  mutate(totCells = sum(habCells)) %>% 
+  ungroup() %>% 
+  mutate(propCells = habCells/totCells) %>% 
+  pivot_wider(id_cols = ID, names_from = landcover, values_from = propCells, values_fill=0) %>% 
+  mutate(ID = Sf_10$id) 
+
+
+habMcp10_dry = extract(dryForest, Sf_10) %>% 
+  rename(landcover = Description2) %>% 
+  group_by(ID, landcover) %>% 
+  summarise(habCells = n()) %>% 
+  ungroup() %>% 
+  group_by(ID) %>% 
+  mutate(totCells = sum(habCells)) %>% 
+  ungroup() %>% 
+  mutate(propCells = habCells/totCells) %>% 
+  pivot_wider(id_cols = ID, names_from = landcover, values_from = propCells, values_fill=0) %>% 
+  mutate(ID = Sf_10$id) 
+
+
+habMcp20_wet = extract(wetForest, Sf_20) %>% 
+  rename(landcover = Description2) %>% 
+  group_by(ID, landcover) %>% 
+  summarise(habCells = n()) %>% 
+  ungroup() %>% 
+  group_by(ID) %>% 
+  mutate(totCells = sum(habCells)) %>% 
+  ungroup() %>% 
+  mutate(propCells = habCells/totCells) %>% 
+  pivot_wider(id_cols = ID, names_from = landcover, values_from = propCells, values_fill=0) %>% 
+  mutate(ID = Sf_20$id) 
+
+
+habMcp20_dry = extract(dryForest, Sf_20) %>% 
+  rename(landcover = Description2) %>% 
+  group_by(ID, landcover) %>% 
+  summarise(habCells = n()) %>% 
+  ungroup() %>% 
+  group_by(ID) %>% 
+  mutate(totCells = sum(habCells)) %>% 
+  ungroup() %>% 
+  mutate(propCells = habCells/totCells) %>% 
+  pivot_wider(id_cols = ID, names_from = landcover, values_from = propCells, values_fill=0) %>% 
+  mutate(ID = Sf_20$id) 
+
+
+habMcp30_wet = extract(wetForest, Sf_30) %>% 
+  rename(landcover = Description2) %>% 
+  group_by(ID, landcover) %>% 
+  summarise(habCells = n()) %>% 
+  ungroup() %>% 
+  group_by(ID) %>% 
+  mutate(totCells = sum(habCells)) %>% 
+  ungroup() %>% 
+  mutate(propCells = habCells/totCells) %>% 
+  pivot_wider(id_cols = ID, names_from = landcover, values_from = propCells, values_fill=0) %>% 
+  mutate(ID = Sf_30$id) 
+
+
+habMcp30_dry = extract(dryForest, Sf_30) %>% 
+  rename(landcover = Description2) %>% 
+  group_by(ID, landcover) %>% 
+  summarise(habCells = n()) %>% 
+  ungroup() %>% 
+  group_by(ID) %>% 
+  mutate(totCells = sum(habCells)) %>% 
+  ungroup() %>% 
+  mutate(propCells = habCells/totCells) %>% 
+  pivot_wider(id_cols = ID, names_from = landcover, values_from = propCells, values_fill=0) %>% 
+  mutate(ID = Sf_30$id) 
+
+
+habMcp40_wet = extract(wetForest, Sf_40) %>% 
+  rename(landcover = Description2) %>% 
+  group_by(ID, landcover) %>% 
+  summarise(habCells = n()) %>% 
+  ungroup() %>% 
+  group_by(ID) %>% 
+  mutate(totCells = sum(habCells)) %>% 
+  ungroup() %>% 
+  mutate(propCells = habCells/totCells) %>% 
+  pivot_wider(id_cols = ID, names_from = landcover, values_from = propCells, values_fill=0) %>% 
+  mutate(ID = Sf_40$id) 
+
+
+habMcp40_dry = extract(dryForest, Sf_40) %>% 
+  rename(landcover = Description2) %>% 
+  group_by(ID, landcover) %>% 
+  summarise(habCells = n()) %>% 
+  ungroup() %>% 
+  group_by(ID) %>% 
+  mutate(totCells = sum(habCells)) %>% 
+  ungroup() %>% 
+  mutate(propCells = habCells/totCells) %>% 
+  pivot_wider(id_cols = ID, names_from = landcover, values_from = propCells, values_fill=0) %>% 
+  mutate(ID = Sf_40$id) 
+
+
+habMcp50_wet = extract(wetForest, Sf_50) %>% 
+  rename(landcover = Description2) %>% 
+  group_by(ID, landcover) %>% 
+  summarise(habCells = n()) %>% 
+  ungroup() %>% 
+  group_by(ID) %>% 
+  mutate(totCells = sum(habCells)) %>% 
+  ungroup() %>% 
+  mutate(propCells = habCells/totCells) %>% 
+  pivot_wider(id_cols = ID, names_from = landcover, values_from = propCells, values_fill=0) %>% 
+  mutate(ID = Sf_50$id) 
+
+
+habMcp50_dry = extract(dryForest, Sf_50) %>% 
+  rename(landcover = Description2) %>% 
+  group_by(ID, landcover) %>% 
+  summarise(habCells = n()) %>% 
+  ungroup() %>% 
+  group_by(ID) %>% 
+  mutate(totCells = sum(habCells)) %>% 
+  ungroup() %>% 
+  mutate(propCells = habCells/totCells) %>% 
+  pivot_wider(id_cols = ID, names_from = landcover, values_from = propCells, values_fill=0) %>% 
+  mutate(ID = Sf_50$id) 
+
+
+habMcp60_wet = extract(wetForest, Sf_60) %>% 
+  rename(landcover = Description2) %>% 
+  group_by(ID, landcover) %>% 
+  summarise(habCells = n()) %>% 
+  ungroup() %>% 
+  group_by(ID) %>% 
+  mutate(totCells = sum(habCells)) %>% 
+  ungroup() %>% 
+  mutate(propCells = habCells/totCells) %>% 
+  pivot_wider(id_cols = ID, names_from = landcover, values_from = propCells, values_fill=0) %>% 
+  mutate(ID = Sf_60$id) 
+
+
+habMcp60_dry = extract(dryForest, Sf_60) %>% 
+  rename(landcover = Description2) %>% 
+  group_by(ID, landcover) %>% 
+  summarise(habCells = n()) %>% 
+  ungroup() %>% 
+  group_by(ID) %>% 
+  mutate(totCells = sum(habCells)) %>% 
+  ungroup() %>% 
+  mutate(propCells = habCells/totCells) %>% 
+  pivot_wider(id_cols = ID, names_from = landcover, values_from = propCells, values_fill=0) %>% 
+  mutate(ID = Sf_60$id) 
+
+
+habMcp70_wet = extract(wetForest, Sf_70) %>% 
+  rename(landcover = Description2) %>% 
+  group_by(ID, landcover) %>% 
+  summarise(habCells = n()) %>% 
+  ungroup() %>% 
+  group_by(ID) %>% 
+  mutate(totCells = sum(habCells)) %>% 
+  ungroup() %>% 
+  mutate(propCells = habCells/totCells) %>% 
+  pivot_wider(id_cols = ID, names_from = landcover, values_from = propCells, values_fill=0) %>% 
+  mutate(ID = Sf_70$id) 
+
+
+habMcp70_dry = extract(dryForest, Sf_70) %>% 
+  rename(landcover = Description2) %>% 
+  group_by(ID, landcover) %>% 
+  summarise(habCells = n()) %>% 
+  ungroup() %>% 
+  group_by(ID) %>% 
+  mutate(totCells = sum(habCells)) %>% 
+  ungroup() %>% 
+  mutate(propCells = habCells/totCells) %>% 
+  pivot_wider(id_cols = ID, names_from = landcover, values_from = propCells, values_fill=0) %>% 
+  mutate(ID = Sf_70$id) 
+
+
+habMcp80_wet = extract(wetForest, Sf_80) %>% 
+  rename(landcover = Description2) %>% 
+  group_by(ID, landcover) %>% 
+  summarise(habCells = n()) %>% 
+  ungroup() %>% 
+  group_by(ID) %>% 
+  mutate(totCells = sum(habCells)) %>% 
+  ungroup() %>% 
+  mutate(propCells = habCells/totCells) %>% 
+  pivot_wider(id_cols = ID, names_from = landcover, values_from = propCells, values_fill=0) %>% 
+  mutate(ID = Sf_80$id) 
+
+
+habMcp80_dry = extract(dryForest, Sf_80) %>% 
+  rename(landcover = Description2) %>% 
+  group_by(ID, landcover) %>% 
+  summarise(habCells = n()) %>% 
+  ungroup() %>% 
+  group_by(ID) %>% 
+  mutate(totCells = sum(habCells)) %>% 
+  ungroup() %>% 
+  mutate(propCells = habCells/totCells) %>% 
+  pivot_wider(id_cols = ID, names_from = landcover, values_from = propCells, values_fill=0) %>% 
+  mutate(ID = Sf_80$id) 
+
+
+habMcp90_wet = extract(wetForest, Sf_90) %>% 
+  rename(landcover = Description2) %>% 
+  group_by(ID, landcover) %>% 
+  summarise(habCells = n()) %>% 
+  ungroup() %>% 
+  group_by(ID) %>% 
+  mutate(totCells = sum(habCells)) %>% 
+  ungroup() %>% 
+  mutate(propCells = habCells/totCells) %>% 
+  pivot_wider(id_cols = ID, names_from = landcover, values_from = propCells, values_fill=0) %>% 
+  mutate(ID = Sf_90$id) 
+
+
+habMcp90_dry = extract(dryForest, Sf_90) %>% 
+  rename(landcover = Description2) %>% 
+  group_by(ID, landcover) %>% 
+  summarise(habCells = n()) %>% 
+  ungroup() %>% 
+  group_by(ID) %>% 
+  mutate(totCells = sum(habCells)) %>% 
+  ungroup() %>% 
+  mutate(propCells = habCells/totCells) %>% 
+  pivot_wider(id_cols = ID, names_from = landcover, values_from = propCells, values_fill=0) %>% 
+  mutate(ID = Sf_90$id) 
+
+
+habMcp100_wet = extract(wetForest, Sf_100) %>% 
+  rename(landcover = Description2) %>% 
+  group_by(ID, landcover) %>% 
+  summarise(habCells = n()) %>% 
+  ungroup() %>% 
+  group_by(ID) %>% 
+  mutate(totCells = sum(habCells)) %>% 
+  ungroup() %>% 
+  mutate(propCells = habCells/totCells) %>% 
+  pivot_wider(id_cols = ID, names_from = landcover, values_from = propCells, values_fill=0) %>% 
+  mutate(ID = Sf_100$id) 
+
+
+habMcp100_dry = extract(dryForest, Sf_100) %>% 
+  rename(landcover = Description2) %>% 
+  group_by(ID, landcover) %>% 
+  summarise(habCells = n()) %>% 
+  ungroup() %>% 
+  group_by(ID) %>% 
+  mutate(totCells = sum(habCells)) %>% 
+  ungroup() %>% 
+  mutate(propCells = habCells/totCells) %>% 
+  pivot_wider(id_cols = ID, names_from = landcover, values_from = propCells, values_fill=0) %>% 
+  mutate(ID = Sf_100$id) 
+
+wet_proportions = rbind(habMcp10_wet, habMcp20_wet, habMcp30_wet, habMcp40_wet, habMcp50_wet, habMcp60_wet, habMcp70_wet, habMcp80_wet, habMcp90_wet, habMcp100_wet) %>%
+  setNames(c('ID', 'notWet', 'wet')) %>% 
+  mutate(Percentage = seq(10, 100, by = 10))%>%
+  dplyr::select('ID', 'wet', 'Percentage')
+
+dry_proportions = rbind(habMcp10_dry, habMcp20_dry, habMcp30_dry, habMcp40_dry, habMcp50_dry, habMcp60_dry, habMcp70_dry, habMcp80_dry, habMcp90_dry, habMcp100_dry) %>% 
+  setNames(c('ID', 'notdry', 'dry')) %>%
+  mutate(Percentage = seq(10, 100, by = 10))%>%
+  dplyr::select('ID', 'dry', 'Percentage')
+
+
+
+ggplot(wet_proportions, aes(x = Percentage, y = wet)) +
+  geom_line(color = "blue") +
+  geom_hline(yintercept = proportion_wet, linetype = "dashed", color = "blue") +
+  labs(title = "Proportion of Wet Forest in Panther Home Ranges",
+       x = "Home Range Size (%)",
+       y = "Proportion of Wet Forest") +
+  theme_minimal()
+
+ggplot(dry_proportions, aes(x = Percentage, y = dry)) +
+  geom_line(color = "red") +
+  geom_hline(yintercept = proportion_dry, linetype = "dashed", color = "red") +
+  labs(title = "Proportion of Dry Forest in Panther Home Ranges",
+       x = "Home Range Size (%)",
+       y = "Proportion of Dry Forest") +
+  theme_minimal()
+```
+
+
+# Challenge 5 (3 points)
+
+Does the panther you chose in Challenge 3/4 prefer dry and/or wet forest? What is your justification for your answer?
+
+Answer to Challenge 5.
+The panther appears to select dry forest more than wet forest, relatively speaking. 
+Given that the line for wet forest is below the dashed line (representing an overall wet forest availability of 50%), and considering that the line trends downward as the home range size increases, it indicates that panthers are including a smaller proportion of wet forest in their ranges than what is available in the environment. As the home range size increases, the proportion of wet forest within the range decreases, which suggests that wet forest is less preferred or less selected as the panther's home range expands.
+Conversely, the line for dry forest lies above the dashed line (representing an overall dry forest availability of 10%), suggesting that panthers include a larger proportion of dry forest within their ranges than what is available in the environment. The proportion of dry forest within the home range declines with increasing home range size but still remains above the 10% availability line, indicating a sustained selection for dry forest habitats.
+ 
+
