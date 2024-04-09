@@ -1,0 +1,341 @@
+---
+title: "Assignment 12 - Connectivity"
+output: html_notebook
+---
+
+
+```{r}
+rm(list=ls())
+
+require(tidyverse)
+require(terra)
+require(sf)
+require(gdistance)
+require(igraph)
+require(fitdistrplus)
+require(fdrtool)
+library(igraph)
+```
+
+
+# Challenge 1 (5 points)
+
+In the lab, we calculated Euclidean distance, least-cost distance, commute distance (based on circuit theory), and a randomized shortest path distance. Examine the correlation among these 4 metrics of effective distance. Which tend to be the longest, which tend to be the shortest, and why? In what situations might you expect to find strong differences between Euclidean distance and the other metrics of effective distance?
+
+```{r}
+land = rast('https://github.com/ValenteJJ/SpatialEcology/raw/main/Week10/panther_landcover.tif')
+public = st_read('/vsicurl/https://github.com/ValenteJJ/SpatialEcology/raw/main/Week12/panther_publicland.shp')
+st_crs(public) = crs(land)
+
+publicCentroids = st_centroid(public)
+plot(land)
+plot(st_geometry(public), add=T)
+plot(st_geometry(publicCentroids), add=T, col='red')
+
+classification = read.table('https://raw.githubusercontent.com/ValenteJJ/SpatialEcology/main/Week12/resistance%20reclass.txt', header=T)
+landCost = classify(land, classification[,c(1,3)])
+landCost = raster(landCost)
+
+plot(landCost)
+plot(st_geometry(public), add=T)
+plot(st_geometry(publicCentroids), add=T, col='red')
+
+#Euclidean distance
+geoDist = pointDistance(publicCentroids, lonlat=F)
+geoDist = as.dist(geoDist)
+geoDist
+
+# least-cost distance
+landCond = transition(1/landCost, transitionFunction = mean, 8)
+landCond = geoCorrection(landCond, type='c', multpl=F)
+lcDist = costDistance(landCond, st_coordinates(publicCentroids))
+lcDist
+
+#Commute distance
+circuitDist = commuteDistance(landCond, st_coordinates(publicCentroids))
+circuitDist
+
+#Randomized shortest path distance
+rspDist1.2 = rSPDistance(landCond, from=st_coordinates(publicCentroids)[1,], to=st_coordinates(publicCentroids)[2,], theta=0.001)
+rspDist1.3 = rSPDistance(landCond, from=st_coordinates(publicCentroids)[1,], to=st_coordinates(publicCentroids)[3,], theta=0.001)
+rspDist1.4 = rSPDistance(landCond, from=st_coordinates(publicCentroids)[1,], to=st_coordinates(publicCentroids)[4,], theta=0.001)
+rspDist1.5 = rSPDistance(landCond, from=st_coordinates(publicCentroids)[1,], to=st_coordinates(publicCentroids)[5,], theta=0.001)
+rspDist2.3 = rSPDistance(landCond, from=st_coordinates(publicCentroids)[2,], to=st_coordinates(publicCentroids)[3,], theta=0.001)
+# rspDist2.4 = rSPDistance(landCond, from=st_coordinates(publicCentroids)[2,], to=st_coordinates(publicCentroids)[4,], theta=0.001)
+rspDist2.5 = rSPDistance(landCond, from=st_coordinates(publicCentroids)[2,], to=st_coordinates(publicCentroids)[5,], theta=0.001)
+rspDist3.4 = rSPDistance(landCond, from=st_coordinates(publicCentroids)[3,], to=st_coordinates(publicCentroids)[4,], theta=0.001)
+rspDist3.5 = rSPDistance(landCond, from=st_coordinates(publicCentroids)[3,], to=st_coordinates(publicCentroids)[5,], theta=0.001)
+# rspDist4.5 = rSPDistance(landCond, from=st_coordinates(publicCentroids)[4,], to=st_coordinates(publicCentroids)[5,], theta=0.001)
+
+# Initialize the matrix with NA values
+rspd_matrix <- matrix(NA, nrow=4, ncol=4)
+
+# Assign the known distances to the upper triangular part of the matrix (excluding the diagonal)
+rspd_matrix[1, 2] <- rspDist1.2
+rspd_matrix[1, 3] <- rspDist1.3
+rspd_matrix[1, 4] <- rspDist1.4
+rspd_matrix[1, 5] <- rspDist1.5
+rspd_matrix[2, 3] <- rspDist2.3
+rspd_matrix[2, 4] <- NA
+rspd_matrix[2, 5] <- rspDist2.5
+rspd_matrix[3, 4] <- rspDist3.4
+rspd_matrix[3, 5] <- rspDist3.5
+rspd_matrix[4, 5] <- NA
+
+rspd_matrix <- rspd_matrix + t(rspd_matrix)
+
+# Fill the diagonal with zeros, indicating zero distance from a point to itself
+diag(rspd_matrix) <- 0
+
+# Print the matrix
+print(rspd_matrix)
+geoDist_matrix <- as.matrix(geoDist)
+geoDist_matrix
+lcDist_matrix <- as.matrix(lcDist)
+lcDist_matrix
+circuitDist_matrix <- as.matrix(circuitDist)
+circuitDist_matrix
+
+# Vectorize each matrix, excluding the diagonal
+geoDist_vector <- geoDist_matrix[upper.tri(geoDist_matrix)]
+lcDist_vector <- lcDist_matrix[upper.tri(lcDist_matrix)]
+circuitDist_vector <- circuitDist_matrix[upper.tri(circuitDist_matrix)]
+rspd_vector <- rspd_matrix[upper.tri(rspd_matrix)]
+
+# Calculate correlations among the vectors
+cor_matrix <- cor(cbind(geoDist_vector, lcDist_vector, circuitDist_vector, rspd_vector), use = "complete.obs")
+
+# Print the correlation matrix
+print(cor_matrix)
+
+# Analysis: Compare mean distances to identify which metric tends to give the longest or shortest distances
+mean_distances <- c(
+  mean(geoDist_vector, na.rm = TRUE),
+  mean(lcDist_vector, na.rm = TRUE),
+  mean(circuitDist_vector, na.rm = TRUE),
+  mean(rspd_vector, na.rm = TRUE)
+)
+
+names(mean_distances) <- c("Euclidean", "Least-cost", "Commute", "RSPD")
+print(mean_distances)
+```
+
+Answer.
+Correlation Analysis:
+High Correlation: All four metrics show high correlations with each other, with coefficients ranging from approximately 0.87 to 1.00. This suggests that while the methodologies for calculating these distances differ, they generally agree on the relative distances between points in the landscape.
+Strongest Correlation: The least-cost distance (lcDist_vector) and the randomized shortest path distance (rspd_vector) have the highest correlation (approximately 0.999), indicating that these two metrics produce very similar results. This is expected since both consider the landscape resistance but apply slightly different methods for calculating the paths.
+Euclidean vs. Other Metrics: The Euclidean distance has the lowest correlations with the other metrics but still shows strong associations (correlations range from about 0.87 to 0.93). This difference is due to the Euclidean distance measuring the straight-line distance, ignoring landscape features that may impede or facilitate movement.
+
+Distance Analysis:
+Shortest Distance: The Euclidean distance has the lowest average distance (about 100,087.8 meters), which is expected because it measures the straight-line distance between points without considering landscape features.
+Longest Distance: The commute distance has the highest average distance (about 1,255,455.9 meters), significantly longer than the others. This reflects its basis in circuit theory, accounting for multiple potential pathways and the cumulative difficulty of traversing the landscape.
+
+Situations with Strong Differences:
+Euclidean vs. Other Metrics: In landscapes where physical barriers (like rivers or highways) or areas of high resistance (like urban centers) significantly impact movement, the Euclidean distance will starkly differ from the other metrics. In such scenarios, the Euclidean distance might underestimate the true difficulty or distance of movement across the landscape, while least-cost, commute, and RSPD distances provide a more realistic portrayal of connectivity challenges.
+
+
+# Challenge 2 (5 points)
+
+In the lab we developed a 10% least-cost corridor between two protected areas. Identify what proportion of this corridor is comprised of each landcover type based on the land raster. To do this, make sure that both the land and leastCostCorridor10 rasters are spatRasters. Then mask land with leastCostCorridor10. The values in the resulting raster will be representative of the landcover values in the corridor. Summarise this information and refer back to the classification dataframe to link the landcover numbers with landcover types. What are the three most common landcover types within this corridor, and does this make sense given what you know about the resistance to movement within such landcover types?
+
+```{r}
+fpwrOssfExtent = extent(642000, 683000, 237000, 298000)
+landSub = crop(land, fpwrOssfExtent)
+landCostSub = crop(landCost, fpwrOssfExtent)
+landCondSub = transition(1/landCostSub, transitionFunction=mean, 8)
+landCondSub = geoCorrection(landCondSub, type='c', multpl=F)
+
+fpwrOssfLcp = shortestPath(landCond, st_coordinates(publicCentroids)[5,], st_coordinates(publicCentroids[3,]), output='SpatialLines')
+
+plot(landCostSub, axes=F)
+plot(st_geometry(public), add=T)
+plot(st_geometry(publicCentroids), col='grey30', add=T)
+lines(fpwrOssfLcp, col='red', lwd=3)
+
+fpwrCost = accCost(landCondSub, st_coordinates(publicCentroids)[5,])
+ossfCost = accCost(landCondSub, st_coordinates(publicCentroids)[3,])
+
+plot(fpwrCost)
+plot(ossfCost)
+
+leastCostCorridor = overlay(fpwrCost, ossfCost, fun=function(x, y){return(x+y)})
+
+plot(leastCostCorridor)
+
+quantile10 = quantile(leastCostCorridor, probs=0.1, na.rm=T)
+leastCostCorridor10 = leastCostCorridor
+values(leastCostCorridor10) <- ifelse(values(leastCostCorridor) < quantile10, 1, NA)
+
+
+plot(leastCostCorridor10, legend=F, axes=F)
+points(publicCentroids, col='grey30')
+lines(fpwrOssfLcp, col='red')
+
+leastCostCorridor10 = rast(leastCostCorridor10)
+crs(leastCostCorridor10) = crs(land)
+plot(leastCostCorridor10)
+
+land = crop(land, leastCostCorridor10)
+
+maskedLandCorridor <- mask(land, leastCostCorridor10)
+landCoverFrequency <- freq(maskedLandCorridor)
+landCoverFrequency <- merge(landCoverFrequency, classification, by.x='value', by.y='Landcover')
+
+landCoverFrequency <- landCoverFrequency[order(-landCoverFrequency$count), ]
+topThreeLandCoverTypes <- head(landCoverFrequency, 3)
+print(topThreeLandCoverTypes)
+```
+
+Answer
+Based on the output, the three most common landcover types within the 10% least-cost corridor you developed are Cypress Swamp, Pinelands and Freshwater Marsh. For a species like the Florida panther, which requires large tracts of contiguous habitat to support its territorial and hunting behaviors, the presence of cypress swamp, freshwater marsh, and pinelands within a least-cost corridor does make ecological sense, but with some nuances:
+Cypress Swamp: These areas can be crucial for panthers, offering water resources and cover for hunting. However, while swamps provide essential resources, they might not be the primary habitat type for panthers due to potential difficulties in movement and hunting in denser, wetter areas. Panthers do use these habitats but might prefer areas where movement is less impeded for regular travel.
+
+Freshwater Marsh: Similar to cypress swamps, freshwater marshes offer necessary water sources and can support a variety of prey species. Marshes might be used by panthers for certain activities or during specific times but are not typically considered their primary habitat. The utility of such areas could be more about connectivity between more preferred habitat patches or for specific resources rather than primary living spaces.
+
+Pinelands: This habitat is much more aligned with the Florida panther’s ecological needs. Pinelands, especially those with an understory that supports prey species, are ideal for panther habitats. They provide a balance of cover for stalking prey and open spaces for movement. The presence of pinelands within a corridor is highly beneficial for panther movement, facilitating dispersal and access to different habitat patches.
+
+While cypress swamps and freshwater marshes might not be the most optimal habitats for panthers due to the challenges they pose for large mammal movement, these areas can still play a vital role in ecological connectivity. They can serve as buffers, contribute to the overall biodiversity of the corridor, and help maintain ecological processes. Additionally, the presence of water bodies and wetlands within a corridor can be crucial for sustaining prey populations that panthers depend on.
+
+The ideal corridor for a Florida panther would prioritize pinelands and other upland habitats that offer ease of movement and abundant prey, while also including or connecting through wetland areas to ensure a diverse and sustainable environment. The inclusion of diverse habitat types within a connectivity corridor reflects the complex needs of wide-ranging species like the panther, balancing movement efficiency with access to various resources across their range.
+
+
+# Challenge 3 (5 points)
+
+In the lab, we used the passage() function to conduct a randomized shortest path analysis mapping connectivity among two protected areas. We initially set theta to 0 thus resulting in a circuit theory based map of connectivity. Using the same passage() function, conduct the analysis again using values of theta = 0.0001 and theta = 0.001. Plot the resulting maps. What patterns do you see emerge as theta increases? Comment on the tradeoffs between biological realism and ease of conservation planning based on these three different maps of connectivity.
+
+```{r}
+passageMapT0 = passage(landCondSub, origin = st_coordinates(publicCentroids)[3,], goal = st_coordinates(publicCentroids)[5,], theta=0)
+plot(passageMapT0)
+
+passageMap1 = passage(landCondSub, origin = st_coordinates(publicCentroids)[3,], goal = st_coordinates(publicCentroids)[5,], theta=0.0001)
+plot(passageMap1)
+
+passageMap2 = passage(landCondSub, origin = st_coordinates(publicCentroids)[3,], goal = st_coordinates(publicCentroids)[5,], theta=0.001)
+plot(passageMap2)
+```
+
+Answer
+With theta set to 0, the map shows the most diffused connectivity, with numerous potential pathways across the landscape. This pattern reflects a circuit theory approach where current can flow through multiple paths, analogous to how an animal might move through a landscape without a single defined route.In the second map (passageMap1 with a lower theta value), the connectivity paths appear more diffused across the landscape, suggesting a wider range of possible movement paths. In the third map (passageMap2 with a higher theta value), the paths become more focused and narrower, indicating a stronger preference for certain routes.As theta increases, there seems to be a sharper gradient between high-use and low-use areas within the connectivity map. High-use areas may represent the most optimal paths, while low-use areas become less favored.
+Given the three maps at different theta values (0 for circuit theory, 0.0001, and 0.001 for randomized shortest paths), several tradeoffs become apparent:
+Biological Realism: The map with theta at 0 (circuit theory) offers the highest biological realism. It acknowledges that animals may take various paths through a landscape, affected by factors like the availability of prey, presence of humans, or individual preferences. As theta increases, the paths converge to fewer corridors which may oversimplify actual animal movement. Animals might not strictly follow these corridors, especially wide-ranging species like the Florida panther.
+Ease of Conservation Planning: While the most diffused map (theta at 0) provides a realistic view of potential animal movement, it's less practical for conservation planning. It suggests that effective conservation would require maintaining a high degree of connectivity across large areas, which can be challenging to implement. Increasing theta narrows down the focus areas, making it easier for conservation planners to target specific tracts of land for corridor development or enhancement. However, focusing solely on these could neglect other important areas used by wildlife.
+Balancing Conservation and Cost: A tradeoff must be made between creating biologically realistic corridors that may be broad and less defined (theta at 0) and corridors that are more targeted and feasible from a resource allocation standpoint (higher theta values). Finding a balance might involve using a variety of theta values to create a composite picture that considers both the potential for broad habitat usage and the practical need for focused conservation efforts.
+In summary, the circuit theory map is most indicative of the complexity of animal movement across a landscape and is the most realistic representation, but it may be the least practical for focused conservation action. As theta increases, the connectivity patterns become more focused, potentially simplifying conservation actions but at the risk of not fully representing the animal's movement dynamics. Effective conservation planning for a species like the Florida panther would ideally take into account the variety of these maps to create a comprehensive strategy that is both biologically informed and practically achievable.
+
+
+# Challenge 4 (5 points)
+
+In the latter part of the lab, we discussed calculating patch-based and landscape-based metrics of connectivity. Patch number 6 had the lowest degree (n = 2) while patch number 7 had one of the highest degrees (n = 12). First delete patch number 6 from the network, and then examine the impacts on the landscape level metrics integral index of connectivity (ICC) and probability of connectivity (PC). Now replace patch 6 back into the network and instead delete patch number 7. Again, examine how ICC and PC change. How does the loss of patch 6 compare to the loss of patch 7 in terms of its impacts on landscape-level connectivity?
+
+```{r}
+nodes = read.csv('https://raw.githubusercontent.com/ValenteJJ/SpatialEcology/main/Week12/kite_nodes.csv')
+area = nodes$area
+
+aObs = read.csv('https://raw.githubusercontent.com/ValenteJJ/SpatialEcology/main/Week12/kite_movement.csv')[,-1]
+diag(aObs) = 0
+
+coords = cbind(nodes$XCoord, nodes$YCoord)
+distMat = pointDistance(coords, lonlat=F)
+distMat = distMat / 1000 # in km
+
+linkLoc = which(aObs > 0, arr.ind=T)
+withinDisp = cbind(distMat[linkLoc], aObs[linkLoc])
+
+#Creating one distance observation for each individual
+withinDisp = rep(withinDisp[,1], withinDisp[,2])
+
+# Calculate mean dispersal distance
+aMeanDist = mean(withinDisp)
+
+# Create the transition matrix
+aMean = matrix(0, nrow=nrow(aObs), ncol=ncol(aObs))
+aMean[distMat < aMeanDist] = 1
+diag(aMean) = 0
+
+aProb = matrix(0, nrow=nrow(aObs), ncol=ncol(aObs))
+alpha = 1/aMeanDist
+
+# Calculate weights in the distance matrix
+aProb = exp(-alpha*distMat)
+diag(aProb)=0
+graphAmean = graph_from_adjacency_matrix(aMean, mode='undirected')
+graphAprob = graph_from_adjacency_matrix(aProb, mode='undirected', weighted=T)
+
+AL = 63990
+nlMat = distances(graphAmean)
+nlMat [is.infinite(nlMat)] = 1000
+iicMat = outer(area, area)/(1+nlMat)
+iic = sum(iicMat)/AL^2
+iic
+
+pStarMat = distances(graphAprob, weights=E(graphAprob)$weight)
+pStarMat = exp(-pStarMat)
+pcNum = outer(area, area)*pStarMat
+pc = sum(pcNum)/AL^2
+pc
+
+
+# Calculate the initial IIC and PC
+initial_iic <- iic
+initial_pc <- pc
+
+# Remove patch number 6 and calculate metrics
+graphAmean_minus_6 <- delete_vertices(graphAmean, 6)
+graphAprob_minus_6 <- delete_vertices(graphAprob, 6)
+area_minus_6 <- area[-6] 
+
+# Recalculate nlMat, iicMat, and pcNum without patch number 6
+nlMat_minus_6 <- distances(graphAmean_minus_6)
+nlMat_minus_6[is.infinite(nlMat_minus_6)] <- 1000
+iicMat_minus_6 <- outer(area_minus_6, area_minus_6)/(1+nlMat_minus_6)
+iic_minus_6 <- sum(iicMat_minus_6)/AL^2
+
+pStarMat_minus_6 <- distances(graphAprob_minus_6, weights=E(graphAprob_minus_6)$weight)
+pStarMat_minus_6 = exp(-pStarMat_minus_6)
+pcNum_minus_6 = outer(area_minus_6, area_minus_6)*pStarMat_minus_6
+pc_minus_6 = sum(pcNum_minus_6)/AL^2
+
+# Restore the network and remove patch number 7 and calculate metrics
+graphAmean_restored <- graphAmean
+graphAprob_restored <- graphAprob
+area_restored <- area
+
+graphAmean_minus_7 <- delete_vertices(graphAmean, 7)
+graphAprob_minus_7 <- delete_vertices(graphAprob, 7)
+area_minus_7 <- area[-7] 
+
+# Recalculate nlMat, iicMat, and pcNum without patch number 7
+nlMat_minus_7 <- distances(graphAmean_minus_7)
+nlMat_minus_7[is.infinite(nlMat_minus_7)] <- 1000
+iicMat_minus_7 <- outer(area_minus_7, area_minus_7)/(1+nlMat_minus_7)
+iic_minus_7 <- sum(iicMat_minus_7)/AL^2
+
+pStarMat_minus_7 <- distances(graphAprob_minus_7, weights=E(graphAprob_minus_7)$weight)
+pStarMat_minus_7 = exp(-pStarMat_minus_7)
+pcNum_minus_7 = outer(area_minus_7, area_minus_7)*pStarMat_minus_7
+pc_minus_7 = sum(pcNum_minus_7)/AL^2
+
+# Compare the changes in metrics
+change_iic_6 <- initial_iic - iic_minus_6
+change_pc_6 <- initial_pc - pc_minus_6
+
+change_iic_7 <- initial_iic - iic_minus_7
+change_pc_7 <- initial_pc - pc_minus_7
+
+# Output the changes to understand the impact
+impact_6 <- c(ICC_change = change_iic_6, PC_change = change_pc_6)
+impact_7 <- c(ICC_change = change_iic_7, PC_change = change_pc_7)
+
+impact_6
+impact_7
+
+```
+
+Answer.
+Based on the output values, the initial IIC value is 0.002805411 and the initial PC value is 0.00595698.
+Impact of Removing Patch 6: The change in IIC after removing patch 6 is approximately 1.700129e-06 and The change in PC after removing patch 6 is approximately 5.077034e-06.
+Impact of Removing Patch 7: The change in IIC after removing patch 7 is 0.0001545444 and The change in PC after removing patch 7 is 0.0003246731.
+
+Implications of these changes: The changes in IIC and PC are both positive numbers, indicating that removing a patch decreases connectivity, which is expected. The magnitude of change for patch 7's removal is significantly larger than that for patch 6's removal, which can be seen by the larger numerical value of the change. This suggests that patch 7 has a much larger impact on landscape-level connectivity compared to patch 6. Given that patch 7 had one of the highest degrees (n = 12), its removal disrupts more connections within the network than the removal of patch 6, which had the  lowest degree (n = 2). The higher degree of patch 7 implies it's a hub or a connector patch with multiple connections to other patches, making it more integral to the overall connectivity of the habitat network. Losing this patch likely fragments the network more severely, resulting in a larger drop in the IIC and PC metrics. In terms of conservation planning, this analysis indicates that patch 7 is likely a critical area for maintaining ecological flow across the landscape, and efforts should prioritize its protection. Patch 6, while still part of the network, does not hold the same level of influence, and its loss does not have as drastic an impact on the connectivity metrics.
+
+
