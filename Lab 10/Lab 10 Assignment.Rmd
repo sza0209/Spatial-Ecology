@@ -142,6 +142,8 @@ print(pantherTable)
 
 ```
 
+$\color{red}{\text{Good. +4}}$
+
 
 # Challenge 2 (4 points)
 
@@ -174,6 +176,8 @@ a-LoCoH tends to provide smaller home ranges because it creates localized convex
 Brownian Bridge takes into account the movement paths between points, leading to estimates that might be more accurate reflections of the actual areas used by the panthers, as it considers the probabilistic use of space between observed locations.
 KDE uses a smoothing function over the point data, which can sometimes overestimate home ranges by creating a smooth surface that may extend beyond the actual area used by the panthers, especially when the smoothing parameter is not optimally selected.
 MCP simply connects the outermost points to form a convex polygon, which can significantly overestimate home range as it includes all points, regardless of how infrequently they might be used.
+
+$\color{red}{\text{Good, although it looks to me like the BrownianBridge home ranges tend to be largest in your figure, right? +3}}$
 
 
 # Challenge 3 (3 points)
@@ -256,6 +260,9 @@ Answer to Challenge 3.
 The results obtained indicate that within the 100% MCP home range for the selected panther, approximately 58.17% is covered by wet forest, and about 14.20% is covered by dry forest. These amounts could possibly be representative of the wet and dry forest available to the panther.  These proportions suggest a few key points regarding habitat preference, availability, and the representativeness of these habitat types within the panther's home range.  The predominance of wet forest within the panther's home range could imply a preference for or higher availability of this habitat type. Wet forests often provide rich resources such as water availability, prey abundance, and cover for stalking prey or hiding. If the panther spends a significant portion of its time in wet forests, this could indicate that these areas meet its ecological needs better than dry 
 Whether these amounts are representative of the wet and dry forest available to the panther depends on several factors. If the area surrounding the MCP is significantly different in terms of habitat composition, the MCP's habitat proportions might not be representative of the panther's potential range.Seasonal changes or longer-term ecological shifts could affect habitat availability and quality, influencing the panther's habitat use patterns over time.Human activities leading to habitat loss, fragmentation, or alteration could disproportionately affect the availability and quality of wet and dry forests, impacting their representativeness within the MCP.
 In conclusion, while the MCP's habitat composition provides valuable insights into the panther's habitat use and preferences, determining the representativeness of these habitats requires a broader landscape perspective, consideration of ecological and temporal dynamics, and an understanding of human impacts on habitat availability and quality. The high proportion of wet forest in the MCP could be representative of the panther's ecological needs and behaviors but needs to be interpreted within a wider context to fully understand its implications.
+
+$\color{red}{\text{Good. +3}}$
+
 
 
 # Challenge 4 (6 points)
@@ -562,6 +569,8 @@ ggplot(dry_proportions, aes(x = Percentage, y = dry)) +
   theme_minimal()
 ```
 
+$\color{red}{\text{Nice looking figure! +6}}$
+
 
 # Challenge 5 (3 points)
 
@@ -571,5 +580,8 @@ Answer to Challenge 5.
 The panther appears to select dry forest more than wet forest, relatively speaking. 
 Given that the line for wet forest is below the dashed line (representing an overall wet forest availability of 50%), and considering that the line trends downward as the home range size increases, it indicates that panthers are including a smaller proportion of wet forest in their ranges than what is available in the environment. As the home range size increases, the proportion of wet forest within the range decreases, which suggests that wet forest is less preferred or less selected as the panther's home range expands.
 Conversely, the line for dry forest lies above the dashed line (representing an overall dry forest availability of 10%), suggesting that panthers include a larger proportion of dry forest within their ranges than what is available in the environment. The proportion of dry forest within the home range declines with increasing home range size but still remains above the 10% availability line, indicating a sustained selection for dry forest habitats.
+
+$\color{red}{\text{Excellent. +3}}$
+
  
 
