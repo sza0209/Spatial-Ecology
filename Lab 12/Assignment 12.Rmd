@@ -133,6 +133,8 @@ Longest Distance: The commute distance has the highest average distance (about 1
 Situations with Strong Differences:
 Euclidean vs. Other Metrics: In landscapes where physical barriers (like rivers or highways) or areas of high resistance (like urban centers) significantly impact movement, the Euclidean distance will starkly differ from the other metrics. In such scenarios, the Euclidean distance might underestimate the true difficulty or distance of movement across the landscape, while least-cost, commute, and RSPD distances provide a more realistic portrayal of connectivity challenges.
 
+$\color{red}{\text{Awesome! +5}}$
+
 
 # Challenge 2 (5 points)
 
@@ -198,6 +200,8 @@ While cypress swamps and freshwater marshes might not be the most optimal habita
 
 The ideal corridor for a Florida panther would prioritize pinelands and other upland habitats that offer ease of movement and abundant prey, while also including or connecting through wetland areas to ensure a diverse and sustainable environment. The inclusion of diverse habitat types within a connectivity corridor reflects the complex needs of wide-ranging species like the panther, balancing movement efficiency with access to various resources across their range.
 
+$\color{red}{\text{Excellent. +5}$
+
 
 # Challenge 3 (5 points)
 
@@ -221,6 +225,8 @@ Biological Realism: The map with theta at 0 (circuit theory) offers the highest 
 Ease of Conservation Planning: While the most diffused map (theta at 0) provides a realistic view of potential animal movement, it's less practical for conservation planning. It suggests that effective conservation would require maintaining a high degree of connectivity across large areas, which can be challenging to implement. Increasing theta narrows down the focus areas, making it easier for conservation planners to target specific tracts of land for corridor development or enhancement. However, focusing solely on these could neglect other important areas used by wildlife.
 Balancing Conservation and Cost: A tradeoff must be made between creating biologically realistic corridors that may be broad and less defined (theta at 0) and corridors that are more targeted and feasible from a resource allocation standpoint (higher theta values). Finding a balance might involve using a variety of theta values to create a composite picture that considers both the potential for broad habitat usage and the practical need for focused conservation efforts.
 In summary, the circuit theory map is most indicative of the complexity of animal movement across a landscape and is the most realistic representation, but it may be the least practical for focused conservation action. As theta increases, the connectivity patterns become more focused, potentially simplifying conservation actions but at the risk of not fully representing the animal's movement dynamics. Effective conservation planning for a species like the Florida panther would ideally take into account the variety of these maps to create a comprehensive strategy that is both biologically informed and practically achievable.
+
+$\color{red}{\text{Great. +5}}$
 
 
 # Challenge 4 (5 points)
@@ -338,4 +344,4 @@ Impact of Removing Patch 7: The change in IIC after removing patch 7 is 0.000154
 
 Implications of these changes: The changes in IIC and PC are both positive numbers, indicating that removing a patch decreases connectivity, which is expected. The magnitude of change for patch 7's removal is significantly larger than that for patch 6's removal, which can be seen by the larger numerical value of the change. This suggests that patch 7 has a much larger impact on landscape-level connectivity compared to patch 6. Given that patch 7 had one of the highest degrees (n = 12), its removal disrupts more connections within the network than the removal of patch 6, which had the  lowest degree (n = 2). The higher degree of patch 7 implies it's a hub or a connector patch with multiple connections to other patches, making it more integral to the overall connectivity of the habitat network. Losing this patch likely fragments the network more severely, resulting in a larger drop in the IIC and PC metrics. In terms of conservation planning, this analysis indicates that patch 7 is likely a critical area for maintaining ecological flow across the landscape, and efforts should prioritize its protection. Patch 6, while still part of the network, does not hold the same level of influence, and its loss does not have as drastic an impact on the connectivity metrics.
 
-
+$\color{red}{\text{Perfect! +5}}$
